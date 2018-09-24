@@ -1,0 +1,25 @@
+{
+  "name": "dc-core",
+  "version": "1.0.0",
+  "description": "DAO.Casino core library",
+  "main": "./lib/index",
+  "scripts": {
+    "build": "npm-run-all typescript",
+    "clean": "rimraf lib",
+    "typescript": "tsc --build"
+  },
+  "husky": {
+    "hooks": {
+      "pre-push": "npm run lint"
+    }
+  },
+  "keywords": [],
+  "author": "",
+  "license": "GPL-3.0",
+  "dependencies": {
+    "node-rsa": "^1.0.1",
+    "dc-ethereum-utils": "1.0.0",
+    "dc-logging": "^1.0.0",
+    "dc-configs": "^1.0.0"
+  }
+}

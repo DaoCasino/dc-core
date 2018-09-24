@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "composite": true,
+    "rootDir": "src",
+    "outDir": "lib"
+  },
+  "include": ["src/**/*"],
+  "references": [
+    { "path": "../dc-messaging" },
+    { "path": "../dc-ethereum-utils" },
+    { "path": "../dc-logging" },
+    { "path": "../dc-configs" }
+  ]
+}
