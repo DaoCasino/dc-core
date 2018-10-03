@@ -20,6 +20,7 @@
     "node-rsa": "^1.0.1",
     "dc-ethereum-utils": "1.0.0",
     "dc-logging": "^1.0.0",
-    "dc-configs": "^1.0.0"
+    "dc-configs": "^1.0.0",
+    "@types/web3":"^1.0.6"
   }
 }

@@ -1,41 +1,32 @@
-import { ISharedRoom, IMessagingProvider } from "dc-messaging";
+import { IMessagingProvider } from "dc-messaging";
 import { Eth } from "dc-ethereum-utils";
-import { ContractInfo } from "dc-configs";
+import Contract from "web3/eth/contract";
+import { GameInfo } from "./GameInfo";
+import { GameLogicFunction } from "./index";
 
-export interface GameInfo {
-  slug: string;
-  hash: string;
-  contract: ContractInfo;
-  gameId: string;
-}
 export interface DAppInstanceParams {
   userId: UserId;
   num: number;
   rules: any;
-  payChannelContract: any;
-  logic: any;
+  payChannelContract: Contract;
+  payChannelContractAddress: string;
+  roomAddress: string;
+  gameLogicFunction: GameLogicFunction;
   roomProvider: IMessagingProvider;
   onFinish: (userId: UserId) => void;
   gameInfo: GameInfo;
   Eth: Eth;
 }
 
-export interface DAppParams {
-  slug: string;
-  rules: any;
-  // timer: number;
-  // checkTimeout: number;
-  contract: ContractInfo;
-  roomProvider: IMessagingProvider;
-  Eth: Eth;
-}
 export type UserId = string;
 
 export interface OpenChannelParams {
-  channelId: string;
   playerAddress: string;
   playerDeposit: number;
   gameData: any;
+}
+export interface GetChannelDataParams extends OpenChannelParams {
+  channelId: string;
 }
 export interface CallParams {
   gamedata: any;
@@ -61,7 +52,14 @@ export interface SignedResponse<TResponse> {
   response: TResponse;
   signature: string;
 }
-export interface IDApp {}
+
+export interface DAppInstanceView {
+  deposit: number;
+  playerBalance: number;
+  bankrollerBalance: number;
+  profit: number;
+  playerAddress: string;
+}
 export interface IDAppInstance {
   getOpenChannelData: (
     data: OpenChannelParams
@@ -70,25 +68,16 @@ export interface IDAppInstance {
   updateState: (data: { state: any }) => { status: string };
   closeByConsent: (data: any) => { sign: string };
   checkCloseChannel: (data: any) => void;
-  call: (data: CallParams) => void;
+  call: (
+    data: CallParams
+  ) => Promise<{
+    args: any[];
+    hash: string;
+    signature: string;
+    state: any;
+    returns: any;
+  }>;
   reconnect: (data: any) => void;
   //closeTimeout(); WTF???
   disconnect: (data: any) => void;
-}
-export interface GameInfo {
-  slug: string;
-  hash: string;
-  contract: ContractInfo;
-  gameId: string;
-}
-export interface DAppInstanceParams {
-  userId: UserId;
-  num: number;
-  rules: any;
-  payChannelContract: any;
-  logic: any;
-  roomProvider: IMessagingProvider;
-  onFinish: (userId: UserId) => void;
-  gameInfo: GameInfo;
-  Eth: Eth;
 }

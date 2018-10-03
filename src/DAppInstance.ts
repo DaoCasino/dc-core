@@ -7,13 +7,16 @@ import {
   SolidityTypeValue,
   IRsa,
   Rsa,
-  CallParams
+  CallParams,
+  IGameLogic,
+  GetChannelDataParams
 } from "./interfaces/index";
 import { PayChannelLogic } from "./PayChannelLogic";
 import { ChannelState } from "./ChannelState";
 import { sha3, debugLog, dec2bet, makeSeed } from "dc-ethereum-utils";
 import { Logger } from "dc-logging";
 import { config } from "dc-configs";
+import Contract from "web3/eth/contract";
 
 const logger = new Logger("DAppInstance");
 const MINIMUM_ETH = 0.001;
@@ -35,15 +38,15 @@ export class DAppInstance implements IDAppInstance {
   nonce: number;
   channelState: ChannelState;
   closeByConsentData: any;
+  private _gameLogic: IGameLogic;
 
   constructor(params: DAppInstanceParams) {
     this._params = params;
     this.nonce = 0;
     this.Rsa = new Rsa();
-    const roomAddress = `${params.gameInfo.hash}_${this._params.userId}`;
-    this._params.roomProvider.exposeSevice(roomAddress, this);
+
     this.payChannelLogic = new PayChannelLogic();
-    //TODO rempve fropm global
+    this._gameLogic = this._params.gameLogicFunction(this.payChannelLogic);
   }
   getView() {
     return {
@@ -52,13 +55,19 @@ export class DAppInstance implements IDAppInstance {
     };
   }
   emit(event: string, data: any) {}
-
+  startServer() {
+    return this._params.roomProvider.exposeSevice(
+      this._params.roomAddress,
+      this,
+      false
+    );
+  }
   async openChannel(params: OpenChannelParams) {
     const { playerDeposit, gameData } = params;
     if (!this._peer) {
       this._peer = await this._params.roomProvider.getRemoteInterface<
         IDAppInstance
-      >(`${this._params.gameInfo.hash}_${this._params.userId}`);
+      >(this._params.roomAddress);
     }
     logger.debug(`🔐 Open channel with deposit: ${playerDeposit}`);
     const userBalance = await this._params.Eth.getBalances();
@@ -79,12 +88,12 @@ export class DAppInstance implements IDAppInstance {
       );
     }
     await this._params.Eth.ERC20ApproveSafe(
-      this._params.payChannelContract.address,
+      this._params.payChannelContractAddress,
       playerDeposit
     );
     const args = {
       channelId: makeSeed(),
-      playerAddress: this._params.Eth.account().openkey,
+      playerAddress: this._params.Eth.account().address,
       playerDeposit,
       gameData
     };
@@ -116,6 +125,7 @@ export class DAppInstance implements IDAppInstance {
 
     // проверяем апрув банкроллера перед открытием
     const bankrollerAllowance = await this._params.Eth.allowance(
+      this._params.payChannelContractAddress,
       bankrollerAddress
     );
     if (bankrollerAllowance < bankrollerDeposit) {
@@ -142,9 +152,9 @@ export class DAppInstance implements IDAppInstance {
         peerResponse.channelId,
         playerAddress,
         bankrollerAddress,
-        playerDeposit,
-        bankrollerDeposit,
-        openingBlock,
+        playerDeposit.toString(),
+        bankrollerDeposit.toString(),
+        openingBlock.toString(),
         gameData,
         n,
         e,
@@ -171,7 +181,7 @@ export class DAppInstance implements IDAppInstance {
           }
           if (confirmationNumber >= config.waitForConfirmations) {
             try {
-              openChannelPromise.off("confirmation");
+              (openChannelPromise as any).off("confirmation");
 
               const check = await this._peer.checkOpenChannel();
               this.payChannelLogic._setDeposits(
@@ -195,7 +205,7 @@ export class DAppInstance implements IDAppInstance {
     });
   }
   async getOpenChannelData(
-    params: OpenChannelParams
+    params: GetChannelDataParams
   ): Promise<SignedResponse<OpenChannelData>> {
     // Create RSA keys for user
 
@@ -233,8 +243,8 @@ export class DAppInstance implements IDAppInstance {
       { t: "bytes", v: n },
       { t: "bytes", v: e }
     ];
-
-    const signature = this._params.Eth.signHash(sha3(...toSign));
+    const hash = sha3(...toSign);
+    const signature = this._params.Eth.signHash(hash);
 
     return { response, signature };
   }
@@ -263,7 +273,34 @@ export class DAppInstance implements IDAppInstance {
       throw new Error("channel not found");
     }
   }
+  async callPeerGame(params: { args: any; userBet: number; gamedata: any }) {
+    this.nonce++;
 
+    const { args, userBet, gamedata } = params;
+    const seed = makeSeed();
+    const toSign: SolidityTypeValue[] = [
+      { t: "bytes32", v: this.channelId },
+      { t: "uint", v: this.nonce },
+      { t: "uint", v: "" + userBet },
+      { t: "uint", v: gamedata },
+      { t: "bytes32", v: seed }
+    ];
+    const sign = await this._params.Eth.signHash(sha3(...toSign));
+    const callResult = await this._peer.call({
+      gamedata,
+      seed,
+      method: "Game",
+      args,
+      nonce: this.nonce,
+      userBet,
+      sign
+    });
+    const localResult = this._gameLogic.Game(...callResult.args);
+
+    // if (localResult !== callResult.returns) {
+    //   this.openDispute();
+    // }
+  }
   async call(
     data: CallParams
   ): Promise<{
@@ -288,7 +325,7 @@ export class DAppInstance implements IDAppInstance {
       throw new Error("Cannot call private function");
     }
 
-    const func = this._params.logic[data.method];
+    const func = this._gameLogic[data.method];
     if (typeof func !== "function") {
       throw new Error(`No function ${event} in game logic`);
     }
@@ -349,7 +386,7 @@ export class DAppInstance implements IDAppInstance {
     // Вызываем функцию игры
     let returns;
     try {
-      returns = this._params.logic.Game(...confirmed.args);
+      returns = this._gameLogic.Game(...confirmed.args);
     } catch (error) {
       const errorData = {
         message: `Cant call gamelogic function ${data.method} with args ${

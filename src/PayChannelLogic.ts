@@ -1,15 +1,10 @@
 import * as Utils from "dc-ethereum-utils";
 import { Logger } from "dc-logging";
-
+import { IPayChannelLogic } from "./interfaces/index";
 /** max items in history */
 const MAX_HISTORY_ITEMS = 100;
 
 const logger = new Logger("PayChannelLogic");
-interface IPayChannelLogic {
-  addTX: (profit: number) => void;
-  getBalance: () => number;
-  printLog: () => void;
-}
 
 export class PayChannelLogic implements IPayChannelLogic {
   deposit: {
