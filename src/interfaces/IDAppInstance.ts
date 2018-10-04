@@ -61,6 +61,7 @@ export interface DAppInstanceView {
   playerAddress: string;
 }
 export interface IDAppInstance {
+  on(event: string, func: (data: any) => void);
   getOpenChannelData: (
     data: OpenChannelParams
   ) => Promise<SignedResponse<OpenChannelData>>;

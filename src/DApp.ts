@@ -39,6 +39,7 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
   _beaconInterval: NodeJS.Timer;
   _gameInfoRoom: IGameInfoRoom;
   dappInstance: DAppInstance;
+  _dappInstancePromise: Promise<DAppInstance | null>;
   constructor(params: DAppParams) {
     super();
     const { slug, contract } = params;
@@ -88,15 +89,19 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
     const readyServers: Map<string, ReadyInfo> = new Map();
     const self = this;
     let dappInstance;
+
     const promise = new Promise<DAppInstance>((resolve, reject) => {
-      this._gameInfoRoom.on("ready", readyInfo => {
+      this._gameInfoRoom.on("ready", async readyInfo => {
         readyServers.set(readyInfo.address, readyInfo);
-        self._chooseServer(readyServers).then(result => {
-          if (result) {
-            dappInstance = result;
-            resolve(result);
-          }
-        });
+        if (this._dappInstancePromise) {
+          await this._dappInstancePromise;
+        }
+        self._dappInstancePromise = self._chooseServer(readyServers);
+        const result = await self._dappInstancePromise;
+        if (result) {
+          dappInstance = result;
+          resolve(result);
+        }
       });
     });
     return promise;
@@ -108,7 +113,7 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
     const theChosen = Array.from(readyServers.values())
       .filter(readyServer => readyServer.deposit)
       .sort((a, b) => a.deposit - b.deposit)[0];
-    //TODO should be some more comlicated alg
+    //TODO should be some more complicated alg
     if (theChosen) {
       const userId = this._params.contract.address;
       const { roomAddress } = await this._gameInfoRoom.connect({
@@ -127,6 +132,7 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
         gameInfo: this._gameInfo,
         Eth: this._params.Eth
       });
+      await this.dappInstance.startClient();
       return this.dappInstance;
       //     dappInstance.openChannel({
       //       channelId: string;

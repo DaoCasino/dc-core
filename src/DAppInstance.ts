@@ -16,14 +16,16 @@ import { ChannelState } from "./ChannelState";
 import { sha3, debugLog, dec2bet, makeSeed } from "dc-ethereum-utils";
 import { Logger } from "dc-logging";
 import { config } from "dc-configs";
+
 import Contract from "web3/eth/contract";
+import { EventEmitter } from "events";
 
 const logger = new Logger("DAppInstance");
 const MINIMUM_ETH = 0.001;
 const GAS_LIMIT = 4600000;
 const GAS_PRICE = 40 * 1000000000;
 
-export class DAppInstance implements IDAppInstance {
+export class DAppInstance extends EventEmitter implements IDAppInstance {
   private _peer: IDAppInstance;
 
   _params: DAppInstanceParams;
@@ -41,6 +43,7 @@ export class DAppInstance implements IDAppInstance {
   private _gameLogic: IGameLogic;
 
   constructor(params: DAppInstanceParams) {
+    super();
     this._params = params;
     this.nonce = 0;
     this.Rsa = new Rsa();
@@ -54,21 +57,30 @@ export class DAppInstance implements IDAppInstance {
       playerAddress: this.playerAddress
     };
   }
-  emit(event: string, data: any) {}
+  eventNames() {
+    return ["info"];
+  }
+  onPeerEvent(event: string, func: (data: any) => void) {
+    this._peer.on(event, func);
+  }
+
   startServer() {
     return this._params.roomProvider.exposeSevice(
       this._params.roomAddress,
       this,
-      false
+      true
     );
   }
-  async openChannel(params: OpenChannelParams) {
-    const { playerDeposit, gameData } = params;
+  async startClient() {
     if (!this._peer) {
       this._peer = await this._params.roomProvider.getRemoteInterface<
         IDAppInstance
       >(this._params.roomAddress);
     }
+  }
+  async openChannel(params: OpenChannelParams) {
+    const { playerDeposit, gameData } = params;
+
     logger.debug(`🔐 Open channel with deposit: ${playerDeposit}`);
     const userBalance = await this._params.Eth.getBalances();
 
@@ -97,6 +109,13 @@ export class DAppInstance implements IDAppInstance {
       playerDeposit,
       gameData
     };
+    this.emit("info", {
+      event: "deposit approved",
+      address: this._params.Eth.account().address,
+      gameAddress: this._params.payChannelContractAddress,
+      amount: playerDeposit
+    });
+
     const {
       response: peerResponse,
       signature
@@ -133,7 +152,12 @@ export class DAppInstance implements IDAppInstance {
         `Bankroller allowance too low ${bankrollerAllowance} for deposit ${bankrollerDeposit}`
       );
     }
-
+    this.emit("info", {
+      event: "Bankroller allowance checked",
+      address: bankrollerAddress,
+      gameAddress: this._params.payChannelContractAddress,
+      amount: bankrollerDeposit
+    });
     // проверяем что вообще есть БЭТы у банкроллера и их достаточно
     const bankrollerBallance = await this._params.Eth.getBetBalance(
       bankrollerAddress
@@ -143,9 +167,12 @@ export class DAppInstance implements IDAppInstance {
         `Bankroller balance too low ${bankrollerAllowance} for deposit ${bankrollerDeposit}`
       );
     }
-
+    this.emit("info", {
+      event: "Bankroller bet balance checked",
+      address: bankrollerAddress,
+      amount: bankrollerBallance
+    });
     // Send open channel TX
-    let check_open_channel_send = false;
 
     const openChannelPromise = this._params.payChannelContract.methods
       .openChannel(
@@ -169,8 +196,8 @@ export class DAppInstance implements IDAppInstance {
     openChannelPromise.on("transactionHash", transactionHash => {
       logger.info("Open channel", transactionHash);
       this.emit("info", {
-        msg: "Open channel transactionHash",
-        data: { transactionHash }
+        event: "Open channel transaction hash",
+        data: transactionHash
       });
     });
     return new Promise((resolve, reject) => {
@@ -179,18 +206,20 @@ export class DAppInstance implements IDAppInstance {
           if (confirmationNumber <= config.waitForConfirmations) {
             console.log("open channel confirmationNumber", confirmationNumber);
           }
+          this.emit("info", {
+            event: "Open channel confirmation",
+            data: confirmationNumber
+          });
           if (confirmationNumber >= config.waitForConfirmations) {
             try {
               (openChannelPromise as any).off("confirmation");
-
               const check = await this._peer.checkOpenChannel();
               this.payChannelLogic._setDeposits(
                 playerDeposit,
                 bankrollerDeposit
               );
-
               this.emit("info", {
-                msg: "Channel is succefully open",
+                event: "Channel open",
                 data: {}
               });
               resolve({ ...check, ...args });
@@ -245,7 +274,6 @@ export class DAppInstance implements IDAppInstance {
     ];
     const hash = sha3(...toSign);
     const signature = this._params.Eth.signHash(hash);
-
     return { response, signature };
   }
   async checkOpenChannel(): Promise<any> {
@@ -268,6 +296,15 @@ export class DAppInstance implements IDAppInstance {
         channel.playerBalance,
         channel.bankrollerBalance
       );
+      this.emit("info", {
+        event: "OpenChannel checked",
+        data: {
+          player: channel.player.toLowerCase(),
+          bankroller: channel.bankroller.toLowerCase(),
+          playerBalance: channel.playerBalance,
+          bankrollerBalance: channel.bankrollerBalance
+        }
+      });
       return channel;
     } else {
       throw new Error("channel not found");
