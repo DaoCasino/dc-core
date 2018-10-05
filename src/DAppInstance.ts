@@ -310,61 +310,41 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
       throw new Error("channel not found");
     }
   }
-  async callPeerGame(params: { args: any; userBet: number; gamedata: any }) {
+  async callPeerGame(params: { args: any; userBet: number; gameData: any }) {
     this.nonce++;
 
-    const { args, userBet, gamedata } = params;
+    const { args, userBet, gameData } = params;
     const seed = makeSeed();
     const toSign: SolidityTypeValue[] = [
       { t: "bytes32", v: this.channelId },
       { t: "uint", v: this.nonce },
       { t: "uint", v: "" + userBet },
-      { t: "uint", v: gamedata },
+      { t: "uint", v: gameData },
       { t: "bytes32", v: seed }
     ];
     const sign = await this._params.Eth.signHash(sha3(...toSign));
     const callResult = await this._peer.call({
-      gamedata,
-      seed,
-      method: "Game",
-      args,
-      nonce: this.nonce,
+      gameData,
       userBet,
+      seed,
+      nonce: this.nonce,
       sign
     });
-    const localResult = this._gameLogic.Game(...callResult.args);
-
-    // if (localResult !== callResult.returns) {
-    //   this.openDispute();
-    // }
+    const localResult = this._gameLogic.Game(
+      userBet,
+      gameData,
+      callResult.randomHash
+    );
   }
   async call(
     data: CallParams
   ): Promise<{
-    args: any[];
-    hash: string;
     signature: string;
-    state: any;
-    returns: any;
+    randomHash: string;
+    gameLogicCallResult: any;
   }> {
-    if (
-      !data ||
-      !data.gamedata ||
-      !data.seed ||
-      !data.method ||
-      !data.args ||
-      !data.nonce
-    ) {
+    if (!data || !data.gameData || !data.seed || !data.nonce) {
       throw new Error("Invalid arguments");
-    }
-
-    if (data.method.substring(0, 1) === "_") {
-      throw new Error("Cannot call private function");
-    }
-
-    const func = this._gameLogic[data.method];
-    if (typeof func !== "function") {
-      throw new Error(`No function ${event} in game logic`);
     }
 
     // сверяем номер сессии
@@ -402,14 +382,14 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
         "Player " + this._params.userId + " not enougth money for this bet"
       );
     }
-
+    const { userBet, gameData, seed } = data;
     // проверка подписи
     const toSign: SolidityTypeValue[] = [
       { t: "bytes32", v: this.channelId },
       { t: "uint", v: this.nonce },
-      { t: "uint", v: "" + data.userBet },
-      { t: "uint", v: data.gamedata },
-      { t: "bytes32", v: data.seed }
+      { t: "uint", v: "" + userBet },
+      { t: "uint", v: gameData as any },
+      { t: "bytes32", v: seed }
     ];
     const recoverOpenkey = this._params.Eth.recover(sha3(...toSign), data.sign);
     if (recoverOpenkey.toLowerCase() !== this._params.userId.toLowerCase()) {
@@ -418,17 +398,19 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
 
     // Подписываем рандом
 
-    const confirmed = this._confirmRandom(data);
+    const { randomHash, signature } = this._getRandom(toSign);
 
     // Вызываем функцию игры
-    let returns;
+    let gameLogicCallResult;
     try {
-      returns = this._gameLogic.Game(...confirmed.args);
+      gameLogicCallResult = this._gameLogic.Game(userBet, gameData, randomHash);
     } catch (error) {
       const errorData = {
-        message: `Cant call gamelogic function ${data.method} with args ${
-          confirmed.args
-        }`,
+        message: `Can't call gamelogic function with args ${{
+          userBet,
+          gameData,
+          randomHash
+        }}`,
         error
       };
       throw new Error(JSON.stringify(errorData));
@@ -449,59 +431,27 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
       );
     }
     return {
-      ...confirmed,
-      state: this.channelState.getBankrollerSigned(),
-      returns
+      randomHash,
+      signature,
+      gameLogicCallResult
     };
   }
-
-  _confirmRandom(
-    data: CallParams
+  _getRandom(
+    data: SolidityTypeValue[]
   ): {
-    args: any[];
-    hash: string;
     signature: string;
+    randomHash: string;
   } {
-    let rnd_o: any = {};
-    let rnd_i = "";
-    for (let k in data.args) {
-      let a = data.args[k];
-      if (typeof a === "object" && typeof a.rnd === "object") {
-        rnd_i = k;
-        rnd_o = a.rnd;
-        break;
-      }
-    }
-
-    let args = data.args.slice(0);
-
-    const toSign = [
-      { t: "bytes32", v: this.channelId },
-      { t: "uint", v: this.nonce },
-      { t: "uint", v: "" + rnd_o.bet },
-      { t: "uint", v: data.gamedata },
-      { t: "bytes32", v: data.seed }
-    ];
-
-    const hash = sha3(...toSign);
+    const hash = sha3(...data);
     const signature = this.Rsa.sign(hash).toString();
-
-    const signatureHash = sha3(signature);
-
-    args[rnd_i] = signatureHash;
-    // TODO refactor math
-    // if (!user.paychannel._totalBet) {
-    //   user.paychannel._totalBet = 0;
-    // }
-    // user.paychannel._totalBet += rnd_o.bet;
+    const randomHash = sha3(signature);
 
     return {
-      args,
-      hash,
-      signature
-      // rnd      : rnd // TODO: check
+      signature,
+      randomHash
     };
   }
+
   updateState(data: { state: any }): { status: string } {
     if (!this.channelState.addPlayerSigned(data.state)) {
       throw new Error("incorrect data");

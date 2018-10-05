@@ -29,12 +29,10 @@ export interface GetChannelDataParams extends OpenChannelParams {
   channelId: string;
 }
 export interface CallParams {
-  gamedata: any;
-  seed: any;
-  method: string;
-  args: any[];
-  nonce: number;
   userBet: number;
+  gameData: number[];
+  seed: string;
+  nonce: number;
   sign: string;
 }
 export interface OpenChannelData {
@@ -72,11 +70,9 @@ export interface IDAppInstance {
   call: (
     data: CallParams
   ) => Promise<{
-    args: any[];
-    hash: string;
     signature: string;
-    state: any;
-    returns: any;
+    randomHash: string;
+    gameLogicCallResult: any;
   }>;
   reconnect: (data: any) => void;
   //closeTimeout(); WTF???
