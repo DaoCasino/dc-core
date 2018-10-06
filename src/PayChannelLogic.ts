@@ -1,10 +1,10 @@
-import * as Utils from "dc-ethereum-utils";
-import { Logger } from "dc-logging";
-import { IPayChannelLogic } from "./interfaces/index";
+import * as Utils from 'dc-ethereum-utils';
+import { Logger } from 'dc-logging';
+import { IPayChannelLogic } from './interfaces/index';
 /** max items in history */
 const MAX_HISTORY_ITEMS = 100;
 
-const logger = new Logger("PayChannelLogic");
+const logger = new Logger('PayChannelLogic');
 
 export class PayChannelLogic implements IPayChannelLogic {
   deposit: {
@@ -32,7 +32,7 @@ export class PayChannelLogic implements IPayChannelLogic {
 
   _setDeposits(player, bankroller) {
     if (this.deposit.player !== null) {
-      console.warn("Deposit allready set");
+      console.warn('Deposit allready set');
     }
 
     this.deposit.player = +player;
@@ -95,7 +95,7 @@ export class PayChannelLogic implements IPayChannelLogic {
     };
   }
   printLog() {
-    logger.debug("Paychannel state:");
+    logger.debug('Paychannel state:');
     logger.debug({
       Deposit: this.getDeposit(),
       Player_balance: this.getBalance(),
@@ -103,7 +103,7 @@ export class PayChannelLogic implements IPayChannelLogic {
       Profit: this.getProfit()
     });
     logger.debug(
-      "TX History, last " + MAX_HISTORY_ITEMS + " items " + this._history.length
+      'TX History, last ' + MAX_HISTORY_ITEMS + ' items ' + this._history.length
     );
     logger.debug(this._history);
 
@@ -111,7 +111,7 @@ export class PayChannelLogic implements IPayChannelLogic {
   }
 
   reset() {
-    logger.debug("PayChannel::reset, set deposit balance profit to 0");
+    logger.debug('PayChannel::reset, set deposit balance profit to 0');
     this.deposit.player = null;
     this.deposit.bankroller = null;
     this.balance.player = 0;

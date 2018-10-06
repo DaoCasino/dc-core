@@ -1,4 +1,4 @@
-import { ContractInfo } from "dc-configs";
+import { ContractInfo } from 'dc-configs';
 export interface GameInfo {
   slug: string;
   hash: string;
