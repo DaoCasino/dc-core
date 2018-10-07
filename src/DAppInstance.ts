@@ -13,7 +13,7 @@ import {
 } from "./interfaces/index";
 import { PayChannelLogic } from "./PayChannelLogic";
 import { ChannelState } from "./ChannelState";
-import { sha3, debugLog, dec2bet, makeSeed } from "dc-ethereum-utils";
+import { sha3, debugLog, dec2bet, makeSeed, bet2dec } from "dc-ethereum-utils";
 import { Logger } from "dc-logging";
 import { config } from "dc-configs";
 
@@ -92,7 +92,7 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
         }. Need ${MINIMUM_ETH}`
       );
     }
-    if (userBalance.bet.balance < playerDeposit) {
+    if (userBalance.bet.balance < dec2bet(playerDeposit)) {
       throw new Error(
         `Not enough BET: ${
           userBalance.bet.balance
@@ -101,7 +101,7 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
     }
     await this._params.Eth.ERC20ApproveSafe(
       this._params.payChannelContractAddress,
-      playerDeposit
+      dec2bet(playerDeposit)
     );
     const args = {
       channelId: makeSeed(),
@@ -147,7 +147,7 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
       this._params.payChannelContractAddress,
       bankrollerAddress
     );
-    if (bankrollerAllowance < bankrollerDeposit) {
+    if (bankrollerAllowance < dec2bet(bankrollerDeposit)) {
       throw new Error(
         `Bankroller allowance too low ${bankrollerAllowance} for deposit ${bankrollerDeposit}`
       );
@@ -310,10 +310,11 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
       throw new Error("channel not found");
     }
   }
-  async callPeerGame(params: { args: any; userBet: number; gameData: any }) {
+
+  async callPeerGame(params: { userBet: number; gameData: any }) {
     this.nonce++;
 
-    const { args, userBet, gameData } = params;
+    const { userBet, gameData } = params;
     const seed = makeSeed();
     const toSign: SolidityTypeValue[] = [
       { t: "bytes32", v: this.channelId },
@@ -335,6 +336,7 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
       gameData,
       callResult.randomHash
     );
+    return callResult;
   }
   async call(
     data: CallParams
