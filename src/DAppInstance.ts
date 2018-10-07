@@ -10,17 +10,26 @@ import {
   CallParams,
   IGameLogic,
   GetChannelDataParams
+<<<<<<< HEAD
 } from "./interfaces/index";
 import { PayChannelLogic } from "./PayChannelLogic";
 import { ChannelState } from "./ChannelState";
 import { sha3, debugLog, dec2bet, makeSeed, bet2dec } from "dc-ethereum-utils";
 import { Logger } from "dc-logging";
 import { config } from "dc-configs";
+=======
+} from './interfaces/index';
+import { PayChannelLogic } from './PayChannelLogic';
+import { ChannelState } from './ChannelState';
+import { sha3, debugLog, dec2bet, makeSeed } from 'dc-ethereum-utils';
+import { Logger } from 'dc-logging';
+import { config } from 'dc-configs';
+>>>>>>> 4cd8b6434996a2caf511544ce7691f0d9601efe9
 
-import Contract from "web3/eth/contract";
-import { EventEmitter } from "events";
+import Contract from 'web3/eth/contract';
+import { EventEmitter } from 'events';
 
-const logger = new Logger("DAppInstance");
+const logger = new Logger('DAppInstance');
 const MINIMUM_ETH = 0.001;
 const GAS_LIMIT = 4600000;
 const GAS_PRICE = 40 * 1000000000;
@@ -58,7 +67,7 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
     };
   }
   eventNames() {
-    return ["info"];
+    return ['info'];
   }
   onPeerEvent(event: string, func: (data: any) => void) {
     this._peer.on(event, func);
@@ -109,8 +118,8 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
       playerDeposit,
       gameData
     };
-    this.emit("info", {
-      event: "deposit approved",
+    this.emit('info', {
+      event: 'deposit approved',
       address: this._params.Eth.account().address,
       gameAddress: this._params.payChannelContractAddress,
       amount: playerDeposit
@@ -130,14 +139,14 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
     } = peerResponse;
     if (this._params.rules.depositX * args.playerDeposit > bankrollerDeposit) {
       logger.debug({
-        msg: "Bankroller open channel bad deposit",
+        msg: 'Bankroller open channel bad deposit',
         data: {
           b_deposit: bankrollerDeposit,
           p_deposit: playerDeposit,
           depositX: this._params.rules.depositX
         }
       });
-      throw new Error("Bankroller open channel deposit too low");
+      throw new Error('Bankroller open channel deposit too low');
     }
     this._peerRsa = new Rsa({ n, e });
     // TODOc Проверяем возвращаемые банкроллером аргументы путем валидации хеша
@@ -152,8 +161,8 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
         `Bankroller allowance too low ${bankrollerAllowance} for deposit ${bankrollerDeposit}`
       );
     }
-    this.emit("info", {
-      event: "Bankroller allowance checked",
+    this.emit('info', {
+      event: 'Bankroller allowance checked',
       address: bankrollerAddress,
       gameAddress: this._params.payChannelContractAddress,
       amount: bankrollerDeposit
@@ -167,8 +176,8 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
         `Bankroller balance too low ${bankrollerAllowance} for deposit ${bankrollerDeposit}`
       );
     }
-    this.emit("info", {
-      event: "Bankroller bet balance checked",
+    this.emit('info', {
+      event: 'Bankroller bet balance checked',
       address: bankrollerAddress,
       amount: bankrollerBallance
     });
@@ -193,33 +202,33 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
         from: playerAddress
       });
 
-    openChannelPromise.on("transactionHash", transactionHash => {
-      logger.info("Open channel", transactionHash);
-      this.emit("info", {
-        event: "Open channel transaction hash",
+    openChannelPromise.on('transactionHash', transactionHash => {
+      logger.info('Open channel', transactionHash);
+      this.emit('info', {
+        event: 'Open channel transaction hash',
         data: transactionHash
       });
     });
     return new Promise((resolve, reject) => {
       openChannelPromise
-        .on("confirmation", async confirmationNumber => {
+        .on('confirmation', async confirmationNumber => {
           if (confirmationNumber <= config.waitForConfirmations) {
-            console.log("open channel confirmationNumber", confirmationNumber);
+            console.log('open channel confirmationNumber', confirmationNumber);
           }
-          this.emit("info", {
-            event: "Open channel confirmation",
+          this.emit('info', {
+            event: 'Open channel confirmation',
             data: confirmationNumber
           });
           if (confirmationNumber >= config.waitForConfirmations) {
             try {
-              (openChannelPromise as any).off("confirmation");
+              (openChannelPromise as any).off('confirmation');
               const check = await this._peer.checkOpenChannel();
               this.payChannelLogic._setDeposits(
                 playerDeposit,
                 bankrollerDeposit
               );
-              this.emit("info", {
-                event: "Channel open",
+              this.emit('info', {
+                event: 'Channel open',
                 data: {}
               });
               resolve({ ...check, ...args });
@@ -228,7 +237,7 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
             }
           }
         })
-        .on("error", error => {
+        .on('error', error => {
           reject(error);
         });
     });
@@ -262,15 +271,15 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
     };
     // Args for open channel transaction
     const toSign: SolidityTypeValue[] = [
-      { t: "bytes32", v: channelId },
-      { t: "address", v: playerAddress },
-      { t: "address", v: bankrollerAddress },
-      { t: "uint", v: playerDeposit.toString() },
-      { t: "uint", v: bankrollerDeposit.toString() },
-      { t: "uint", v: openingBlock },
-      { t: "uint", v: gameData },
-      { t: "bytes", v: n },
-      { t: "bytes", v: e }
+      { t: 'bytes32', v: channelId },
+      { t: 'address', v: playerAddress },
+      { t: 'address', v: bankrollerAddress },
+      { t: 'uint', v: playerDeposit.toString() },
+      { t: 'uint', v: bankrollerDeposit.toString() },
+      { t: 'uint', v: openingBlock },
+      { t: 'uint', v: gameData },
+      { t: 'bytes', v: n },
+      { t: 'bytes', v: e }
     ];
     const hash = sha3(...toSign);
     const signature = this._params.Eth.signHash(hash);
@@ -282,12 +291,12 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
       .call();
 
     if (
-      channel.state === "1" &&
+      channel.state === '1' &&
       channel.player.toLowerCase() === this._params.userId.toLowerCase() &&
       channel.bankroller.toLowerCase() ===
         this._params.Eth.account().address.toLowerCase() &&
-      "" + channel.playerBalance === "" + this.playerDeposit &&
-      "" + channel.bankrollerBalance === "" + this.bankrollerDeposit
+      '' + channel.playerBalance === '' + this.playerDeposit &&
+      '' + channel.bankrollerBalance === '' + this.bankrollerDeposit
     ) {
       this.channel = channel;
 
@@ -296,8 +305,8 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
         channel.playerBalance,
         channel.bankrollerBalance
       );
-      this.emit("info", {
-        event: "OpenChannel checked",
+      this.emit('info', {
+        event: 'OpenChannel checked',
         data: {
           player: channel.player.toLowerCase(),
           bankroller: channel.bankroller.toLowerCase(),
@@ -307,7 +316,7 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
       });
       return channel;
     } else {
-      throw new Error("channel not found");
+      throw new Error('channel not found');
     }
   }
 
@@ -317,11 +326,11 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
     const { userBet, gameData } = params;
     const seed = makeSeed();
     const toSign: SolidityTypeValue[] = [
-      { t: "bytes32", v: this.channelId },
-      { t: "uint", v: this.nonce },
-      { t: "uint", v: "" + userBet },
-      { t: "uint", v: gameData },
-      { t: "bytes32", v: seed }
+      { t: 'bytes32', v: this.channelId },
+      { t: 'uint', v: this.nonce },
+      { t: 'uint', v: '' + userBet },
+      { t: 'uint', v: gameData },
+      { t: 'bytes32', v: seed }
     ];
     const sign = await this._params.Eth.signHash(sha3(...toSign));
     const callResult = await this._peer.call({
@@ -346,13 +355,13 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
     gameLogicCallResult: any;
   }> {
     if (!data || !data.gameData || !data.seed || !data.nonce) {
-      throw new Error("Invalid arguments");
+      throw new Error('Invalid arguments');
     }
 
     // сверяем номер сессии
     this.nonce++;
     if (data.nonce * 1 !== this.nonce * 1) {
-      throw new Error("Invalid nonce");
+      throw new Error('Invalid nonce');
       // TODO: openDispute
     }
 
@@ -366,7 +375,7 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
     // Проверяем нет ли неподписанных юзером предыдущих состояний
     if (this.channelState.hasUnconfirmed()) {
       throw new Error(
-        "Player " + this._params.userId + " not confirm previous channel state"
+        'Player ' + this._params.userId + ' not confirm previous channel state'
       );
     }
 
@@ -381,21 +390,21 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
     console.log(dec2bet(userBets), dec2bet(data.userBet));
     if (dec2bet(userBets) < dec2bet(data.userBet) * 1) {
       throw new Error(
-        "Player " + this._params.userId + " not enougth money for this bet"
+        'Player ' + this._params.userId + ' not enougth money for this bet'
       );
     }
     const { userBet, gameData, seed } = data;
     // проверка подписи
     const toSign: SolidityTypeValue[] = [
-      { t: "bytes32", v: this.channelId },
-      { t: "uint", v: this.nonce },
-      { t: "uint", v: "" + userBet },
-      { t: "uint", v: gameData as any },
-      { t: "bytes32", v: seed }
+      { t: 'bytes32', v: this.channelId },
+      { t: 'uint', v: this.nonce },
+      { t: 'uint', v: '' + userBet },
+      { t: 'uint', v: gameData as any },
+      { t: 'bytes32', v: seed }
     ];
     const recoverOpenkey = this._params.Eth.recover(sha3(...toSign), data.sign);
     if (recoverOpenkey.toLowerCase() !== this._params.userId.toLowerCase()) {
-      throw new Error("Invalid signature");
+      throw new Error('Invalid signature');
     }
 
     // Подписываем рандом
@@ -420,16 +429,16 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
 
     const state_data = {
       _id: this.channelId,
-      _playerBalance: "" + this.payChannelLogic._getBalance().player,
-      _bankrollerBalance: "" + this.payChannelLogic._getBalance().bankroller,
-      _totalBet: "" + lastState._totalBet,
+      _playerBalance: '' + this.payChannelLogic._getBalance().player,
+      _bankrollerBalance: '' + this.payChannelLogic._getBalance().bankroller,
+      _totalBet: '' + lastState._totalBet,
       _nonce: this.nonce
     };
 
     // Сохраняем подписанный нами последний стейт канала
     if (!this.channelState.addBankrollerSigned(state_data)) {
       throw new Error(
-        "Prodblem with save last channel state - addBankrollerSignedState"
+        'Prodblem with save last channel state - addBankrollerSignedState'
       );
     }
     return {
@@ -456,9 +465,9 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
 
   updateState(data: { state: any }): { status: string } {
     if (!this.channelState.addPlayerSigned(data.state)) {
-      throw new Error("incorrect data");
+      throw new Error('incorrect data');
     }
-    return { status: "ok" };
+    return { status: 'ok' };
   }
 
   closeByConsent(data): { sign: string } {
@@ -469,12 +478,12 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
 
     // Отправляем ему свою подпись закрытия
     let hash = sha3(
-      { t: "bytes32", v: lastState._id },
-      { t: "uint", v: lastState._playerBalance },
-      { t: "uint", v: lastState._bankrollerBalance },
-      { t: "uint", v: lastState._totalBet },
-      { t: "uint", v: lastState._session },
-      { t: "bool", v: true }
+      { t: 'bytes32', v: lastState._id },
+      { t: 'uint', v: lastState._playerBalance },
+      { t: 'uint', v: lastState._bankrollerBalance },
+      { t: 'uint', v: lastState._totalBet },
+      { t: 'uint', v: lastState._session },
+      { t: 'bool', v: true }
     );
     const sign = this._params.Eth.signHash(hash);
 
@@ -485,9 +494,9 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
     const channel = await this._params.payChannelContract.methods
       .channels(this.channelId)
       .call();
-    if (channel.state === "2") {
+    if (channel.state === '2') {
       this.finish();
-      return { status: "ok" };
+      return { status: 'ok' };
     } else {
       //
       // user.paychannel.closeByConsent
@@ -499,7 +508,7 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
   }
 
   reconnect(data) {
-    logger.debug("User reconnect");
+    logger.debug('User reconnect');
     //TODE implement or delete
   }
   disconnect() {
