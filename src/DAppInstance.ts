@@ -34,7 +34,9 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
   channelId: string;
   playerAddress: string;
   playerDeposit: number;
+  playerDepositWei: string;
   bankrollerDeposit: number;
+  bankrollerDepositWei: string;
   channel: any;
   payChannelLogic: PayChannelLogic;
   nonce: number;
@@ -92,7 +94,7 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
         }. Need ${MINIMUM_ETH}`
       );
     }
-    if (userBalance.bet.balance < dec2bet(playerDeposit)) {
+    if (userBalance.bet.balance < playerDeposit) {
       throw new Error(
         `Not enough BET: ${
           userBalance.bet.balance
@@ -101,10 +103,12 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
     }
     await this._params.Eth.ERC20ApproveSafe(
       this._params.payChannelContractAddress,
-      dec2bet(playerDeposit)
+      playerDeposit
     );
+    const channelId = makeSeed();
+    this.channelId = channelId;
     const args = {
-      channelId: makeSeed(),
+      channelId,
       playerAddress: this._params.Eth.account().address,
       playerDeposit,
       gameData
@@ -121,19 +125,21 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
       signature
     } = await this._peer.getOpenChannelData(args);
     const {
-      bankrollerDeposit,
+      bankrollerDepositWei,
+      playerDepositWei,
       bankrollerAddress,
       playerAddress,
       openingBlock,
       n,
       e
     } = peerResponse;
+    const bankrollerDeposit = dec2bet(bankrollerDepositWei);
     if (this._params.rules.depositX * args.playerDeposit > bankrollerDeposit) {
       logger.debug({
         msg: "Bankroller open channel bad deposit",
         data: {
-          b_deposit: bankrollerDeposit,
-          p_deposit: playerDeposit,
+          bankrollerDeposit,
+          playerDeposit,
           depositX: this._params.rules.depositX
         }
       });
@@ -179,8 +185,8 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
         peerResponse.channelId,
         playerAddress,
         bankrollerAddress,
-        playerDeposit.toString(),
-        bankrollerDeposit.toString(),
+        playerDepositWei,
+        bankrollerDepositWei,
         openingBlock.toString(),
         gameData,
         n,
@@ -241,20 +247,24 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
     const { channelId, playerAddress, playerDeposit, gameData } = params;
     this.channelId = channelId;
     this.playerAddress = playerAddress;
-    this.playerDeposit = playerDeposit;
+
     const bankrollerAddress = this._params.Eth.account().address;
     const bankrollerDeposit = playerDeposit * this._params.rules.depositX;
     this.bankrollerDeposit = bankrollerDeposit;
     const openingBlock = await this._params.Eth.getBlockNumber();
     // Args for open channel transaction
     const { n, e } = this.Rsa.getNE();
+    const playerDepositWei = bet2dec(playerDeposit);
+    const bankrollerDepositWei = bet2dec(bankrollerDeposit);
+    this.playerDepositWei = playerDepositWei;
+    this.bankrollerDepositWei = bankrollerDepositWei;
 
     const response = {
       channelId,
       playerAddress,
-      playerDeposit,
+      playerDepositWei,
       bankrollerAddress,
-      bankrollerDeposit,
+      bankrollerDepositWei,
       openingBlock,
       gameData,
       n,
@@ -265,8 +275,8 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
       { t: "bytes32", v: channelId },
       { t: "address", v: playerAddress },
       { t: "address", v: bankrollerAddress },
-      { t: "uint", v: playerDeposit.toString() },
-      { t: "uint", v: bankrollerDeposit.toString() },
+      { t: "uint", v: playerDepositWei },
+      { t: "uint", v: bankrollerDepositWei },
       { t: "uint", v: openingBlock },
       { t: "uint", v: gameData },
       { t: "bytes", v: n },
@@ -286,8 +296,8 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
       channel.player.toLowerCase() === this._params.userId.toLowerCase() &&
       channel.bankroller.toLowerCase() ===
         this._params.Eth.account().address.toLowerCase() &&
-      "" + channel.playerBalance === "" + this.playerDeposit &&
-      "" + channel.bankrollerBalance === "" + this.bankrollerDeposit
+      "" + channel.playerBalance === "" + this.playerDepositWei &&
+      "" + channel.bankrollerBalance === "" + this.bankrollerDepositWei
     ) {
       this.channel = channel;
 
@@ -315,28 +325,37 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
     this.nonce++;
 
     const { userBet, gameData } = params;
+
     const seed = makeSeed();
+    const userBetWei = bet2dec(userBet);
     const toSign: SolidityTypeValue[] = [
       { t: "bytes32", v: this.channelId },
       { t: "uint", v: this.nonce },
-      { t: "uint", v: "" + userBet },
+      { t: "uint", v: userBetWei },
       { t: "uint", v: gameData },
       { t: "bytes32", v: seed }
     ];
     const sign = await this._params.Eth.signHash(sha3(...toSign));
-    const callResult = await this._peer.call({
-      gameData,
-      userBet,
-      seed,
-      nonce: this.nonce,
-      sign
-    });
-    const localResult = this._gameLogic.Game(
-      userBet,
-      gameData,
-      callResult.randomHash
-    );
-    return callResult;
+    try {
+      // TODO delete that
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      const callResult = await this._peer.call({
+        gameData,
+        userBet,
+        seed,
+        nonce: this.nonce,
+        sign
+      });
+      const localResult = this._gameLogic.Game(
+        userBet,
+        gameData,
+        callResult.randomHash
+      );
+      return callResult;
+    } catch (error) {
+      logger.error(error);
+      throw error;
+    }
   }
   async call(
     data: CallParams
@@ -364,32 +383,33 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
       );
     }
     // Проверяем нет ли неподписанных юзером предыдущих состояний
-    if (this.channelState.hasUnconfirmed()) {
-      throw new Error(
-        "Player " + this._params.userId + " not confirm previous channel state"
-      );
-    }
+    // if (this.channelState.hasUnconfirmed()) {
+    //   throw new Error(
+    //     "Player " + this._params.userId + " not confirm previous channel state"
+    //   );
+    // }
 
     // Проверяем что юзера достаточно бетов для этой ставки
-    let userBets = this.channel.playerBalance;
-    const lastState = this.channelState.getBankrollerSigned();
+    // let userBets = this.channel.playerBalance;
+    // const lastState = this.channelState.getBankrollerSigned();
 
-    if (lastState && lastState._playerBalance) {
-      userBets = lastState._playerBalance;
-    }
+    // if (lastState && lastState._playerBalance) {
+    //   userBets = lastState._playerBalance;
+    // }
 
-    console.log(dec2bet(userBets), dec2bet(data.userBet));
-    if (dec2bet(userBets) < dec2bet(data.userBet) * 1) {
-      throw new Error(
-        "Player " + this._params.userId + " not enougth money for this bet"
-      );
-    }
+    // console.log(dec2bet(userBets), dec2bet(data.userBet));
+    // if (dec2bet(userBets) < dec2bet(data.userBet) * 1) {
+    //   throw new Error(
+    //     "Player " + this._params.userId + " not enougth money for this bet"
+    //   );
+    // }
     const { userBet, gameData, seed } = data;
+    const userBetWei = bet2dec(userBet);
     // проверка подписи
     const toSign: SolidityTypeValue[] = [
       { t: "bytes32", v: this.channelId },
       { t: "uint", v: this.nonce },
-      { t: "uint", v: "" + userBet },
+      { t: "uint", v: userBetWei },
       { t: "uint", v: gameData as any },
       { t: "bytes32", v: seed }
     ];
@@ -422,16 +442,16 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
       _id: this.channelId,
       _playerBalance: "" + this.payChannelLogic._getBalance().player,
       _bankrollerBalance: "" + this.payChannelLogic._getBalance().bankroller,
-      _totalBet: "" + lastState._totalBet,
+      _totalBet: "0",
       _nonce: this.nonce
     };
 
     // Сохраняем подписанный нами последний стейт канала
-    if (!this.channelState.addBankrollerSigned(state_data)) {
-      throw new Error(
-        "Prodblem with save last channel state - addBankrollerSignedState"
-      );
-    }
+    // if (!this.channelState.addBankrollerSigned(state_data)) {
+    //   throw new Error(
+    //     "Prodblem with save last channel state - addBankrollerSignedState"
+    //   );
+    // }
     return {
       randomHash,
       signature,

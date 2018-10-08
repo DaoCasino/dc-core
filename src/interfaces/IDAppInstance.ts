@@ -1,8 +1,8 @@
-import { IMessagingProvider } from 'dc-messaging';
-import { Eth } from 'dc-ethereum-utils';
-import Contract from 'web3/eth/contract';
-import { GameInfo } from './GameInfo';
-import { GameLogicFunction } from './index';
+import { IMessagingProvider } from "dc-messaging";
+import { Eth } from "dc-ethereum-utils";
+import Contract from "web3/eth/contract";
+import { GameInfo } from "./GameInfo";
+import { GameLogicFunction } from "./index";
 
 export interface DAppInstanceParams {
   userId: UserId;
@@ -38,9 +38,9 @@ export interface CallParams {
 export interface OpenChannelData {
   channelId: any; //TODO
   playerAddress: string;
-  playerDeposit: number;
   bankrollerAddress: string;
-  bankrollerDeposit: number;
+  playerDepositWei: string;
+  bankrollerDepositWei: string;
   openingBlock: string;
   gameData: string;
   n: string;
