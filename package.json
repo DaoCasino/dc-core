@@ -12,10 +12,13 @@
   "author": "",
   "license": "GPL-3.0",
   "dependencies": {
-    "node-rsa": "^1.0.1",
+    "@types/web3": "^1.0.6",
+    "dc-configs": "^1.0.0",
     "dc-ethereum-utils": "1.0.0",
     "dc-logging": "^1.0.0",
-    "dc-configs": "^1.0.0",
-    "@types/web3":"^1.0.6"
+    "node-rsa": "^1.0.1"
+  },
+  "devDependencies": {
+    "husky": "1.1.1"
   }
 }
