@@ -6,11 +6,11 @@ export class GlobalGameLogicStore {
    */
   getGameLogic(slug) {
     const globalStore = global || window;
-    return globalStore["DAppsLogic"][slug];
+    return globalStore['DAppsLogic'][slug];
   }
   defineDAppLogic(slug, logicConstructor) {
     const globalStore = global || window;
-    globalStore["DAppsLogic"] = globalStore["DAppsLogic"] || {};
-    globalStore["DAppsLogic"][slug] = logicConstructor;
+    globalStore['DAppsLogic'] = globalStore['DAppsLogic'] || {};
+    globalStore['DAppsLogic'][slug] = logicConstructor;
   }
 }

@@ -1,8 +1,8 @@
-import { IMessagingProvider } from "dc-messaging";
-import { Eth } from "dc-ethereum-utils";
-import Contract from "web3/eth/contract";
-import { GameInfo } from "./GameInfo";
-import { GameLogicFunction } from "./index";
+import { IMessagingProvider } from 'dc-messaging';
+import { Eth } from 'dc-ethereum-utils';
+import Contract from 'web3/eth/contract';
+import { GameInfo } from './GameInfo';
+import { GameLogicFunction } from './index';
 
 export interface DAppInstanceParams {
   userId: UserId;
@@ -29,20 +29,18 @@ export interface GetChannelDataParams extends OpenChannelParams {
   channelId: string;
 }
 export interface CallParams {
-  gamedata: any;
-  seed: any;
-  method: string;
-  args: any[];
-  nonce: number;
   userBet: number;
+  gameData: number[];
+  seed: string;
+  nonce: number;
   sign: string;
 }
 export interface OpenChannelData {
   channelId: any; //TODO
   playerAddress: string;
-  playerDeposit: number;
   bankrollerAddress: string;
-  bankrollerDeposit: number;
+  playerDepositWei: string;
+  bankrollerDepositWei: string;
   openingBlock: string;
   gameData: string;
   n: string;
@@ -61,6 +59,7 @@ export interface DAppInstanceView {
   playerAddress: string;
 }
 export interface IDAppInstance {
+  on(event: string, func: (data: any) => void);
   getOpenChannelData: (
     data: OpenChannelParams
   ) => Promise<SignedResponse<OpenChannelData>>;
@@ -71,11 +70,9 @@ export interface IDAppInstance {
   call: (
     data: CallParams
   ) => Promise<{
-    args: any[];
-    hash: string;
     signature: string;
-    state: any;
-    returns: any;
+    randomHash: string;
+    gameLogicCallResult: any;
   }>;
   reconnect: (data: any) => void;
   //closeTimeout(); WTF???
