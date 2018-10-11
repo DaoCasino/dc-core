@@ -55,7 +55,11 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
   }
   getView() {
     return {
-      ...this.payChannelLogic.getView(),
+      deposit: this.playerDeposit,
+      playerBalance: this.playerDeposit,
+      bankrollerBalance: this.bankrollerDeposit,
+      profit: 0,
+
       playerAddress: this.playerAddress
     };
   }
