@@ -32,7 +32,7 @@ export class PayChannelLogic implements IPayChannelLogic {
 
   _setDeposits(player, bankroller) {
     if (this.deposit.player !== null) {
-      console.warn('Deposit allready set');
+      logger.warn('Deposit allready set');
     }
 
     this.deposit.player = +player;
@@ -77,7 +77,7 @@ export class PayChannelLogic implements IPayChannelLogic {
     this.balance.bankroller = this.deposit.bankroller - this._profit;
 
     this._history.push({
-      profit: profit,
+      profit,
       balance: this.balance.player,
       timestamp: new Date().getTime()
     });
