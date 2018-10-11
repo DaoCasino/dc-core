@@ -5,12 +5,12 @@ export class GlobalGameLogicStore {
    * @param {function} logic_constructor constructor Dapp logic
    */
   getGameLogic(slug) {
-    const globalStore = global || window;
-    return globalStore['DAppsLogic'][slug];
+    const globalStore: any = global || window;
+    return globalStore.DAppsLogic[slug];
   }
   defineDAppLogic(slug, logicConstructor) {
-    const globalStore = global || window;
-    globalStore['DAppsLogic'] = globalStore['DAppsLogic'] || {};
-    globalStore['DAppsLogic'][slug] = logicConstructor;
+    const globalStore: any = global || window;
+    globalStore.DAppsLogic = globalStore.DAppsLogic || {};
+    globalStore.DAppsLogic[slug] = logicConstructor;
   }
 }
