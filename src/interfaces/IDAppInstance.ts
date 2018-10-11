@@ -36,7 +36,7 @@ export interface CallParams {
   sign: string;
 }
 export interface OpenChannelData {
-  channelId: any; //TODO
+  channelId: any; // TODO add type
   playerAddress: string;
   bankrollerAddress: string;
   playerDepositWei: string;
@@ -75,6 +75,6 @@ export interface IDAppInstance {
     gameLogicCallResult: any;
   }>;
   reconnect: (data: any) => void;
-  //closeTimeout(); WTF???
+  // closeTimeout(); WTF???
   disconnect: (data: any) => void;
 }

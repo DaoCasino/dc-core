@@ -1,7 +1,7 @@
 import { IPayChannelLogic } from './IPayChannelLogic';
 
 export interface IGameLogic {
-  Game: Function;
+  Game: any;
   history: any[];
 }
 

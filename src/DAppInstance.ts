@@ -13,7 +13,7 @@ import {
 } from './interfaces/index';
 import { PayChannelLogic } from './PayChannelLogic';
 import { ChannelState } from './ChannelState';
-import { sha3, debugLog, dec2bet, makeSeed, bet2dec } from 'dc-ethereum-utils';
+import { sha3, dec2bet, makeSeed, bet2dec } from 'dc-ethereum-utils';
 import { Logger } from 'dc-logging';
 import { config } from 'dc-configs';
 
@@ -210,7 +210,9 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
       openChannelPromise
         .on('confirmation', async confirmationNumber => {
           if (confirmationNumber <= config.waitForConfirmations) {
-            console.log('open channel confirmationNumber', confirmationNumber);
+            logger.debug(
+              `open channel confirmationNumber $ {confirmationNumber}`
+            );
           }
           this.emit('info', {
             event: 'Open channel confirmation',
@@ -438,7 +440,7 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
       throw new Error(JSON.stringify(errorData));
     }
 
-    const state_data = {
+    const stateData = {
       _id: this.channelId,
       _playerBalance: '' + this.payChannelLogic._getBalance().player,
       _bankrollerBalance: '' + this.payChannelLogic._getBalance().bankroller,
@@ -488,7 +490,7 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
     this.closeByConsentData = data;
 
     // Отправляем ему свою подпись закрытия
-    let hash = sha3(
+    const hash = sha3(
       { t: 'bytes32', v: lastState._id },
       { t: 'uint', v: lastState._playerBalance },
       { t: 'uint', v: lastState._bankrollerBalance },
@@ -520,7 +522,7 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
 
   reconnect(data) {
     logger.debug('User reconnect');
-    //TODE implement or delete
+    // TODE implement or delete
   }
   disconnect() {
     this.finish();
