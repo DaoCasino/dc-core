@@ -121,7 +121,7 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
       this.dappInstance = new DAppInstance({
         userId,
         num: 0,
-        rules: config.rules,
+        rules: this._params.rules,
         payChannelContract: this._payChannelContract,
         payChannelContractAddress: this._payChannelContractAddress,
         gameLogicFunction: this._params.gameLogicFunction,
@@ -187,7 +187,7 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
     const dappInstance = new DAppInstance({
       userId,
       num: 0,
-      rules: config.rules,
+      rules: this._params.rules,
       roomAddress,
       payChannelContract: this._payChannelContract,
       payChannelContractAddress: this._payChannelContractAddress,
