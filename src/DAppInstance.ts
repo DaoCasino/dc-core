@@ -13,7 +13,7 @@ import {
 } from './interfaces/index';
 import { PayChannelLogic } from './PayChannelLogic';
 import { ChannelState } from './ChannelState';
-import { sha3, debugLog, dec2bet, makeSeed, bet2dec } from 'dc-ethereum-utils';
+import { sha3, dec2bet, makeSeed, bet2dec } from 'dc-ethereum-utils';
 import { Logger } from 'dc-logging';
 import { config } from 'dc-configs';
 
