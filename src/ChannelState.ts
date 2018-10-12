@@ -1,12 +1,12 @@
-import { Eth, sha3 } from 'dc-ethereum-utils'
+import {
+  Eth,
+  sha3,
+  SolidityTypeValue
+} from 'dc-ethereum-utils'
 
-/*
- * Channel state manager / store
- */
 import { Logger } from 'dc-logging'
 
 const logger = new Logger('tests')
-
 export class ChannelState {
   states: any
   waitStates: any
@@ -15,13 +15,16 @@ export class ChannelState {
   private eth: Eth
 
   constructor(playerOpenkey: string, eth: Eth) {
-    this.eth = eth
+    this.eth        = eth
+    this.states     = {}
+    this.waitStates = {}
     if (!playerOpenkey) {
       logger.error(' player_openkey required in channelState constructor')
       return
     }
     this.playerOpenkey = playerOpenkey
   }
+
   checkFormat(data) {
     for (const k in this.stateFormat) {
       if (k !== '_sign' && !data[k]) return false
@@ -29,32 +32,43 @@ export class ChannelState {
     return true
   }
 
-  GetState(hash?) {
+  getState(address: string, hash?): any {
     if (Object.keys(this.states).length === 0) return {}
     if (!hash) hash = Object.keys(this.states).splice(-1)
-    return this.states[hash]
+
+    for (const key in this.states[hash]) {
+      if (key.toLowerCase() === address.toLowerCase()) {
+        return this.states[hash][key]
+      }
+    }
+
+    logger.debug(`Not state for address: ${address}`)
+    return false
   }
 
-  addBankrollerSigned(stateData) {
+  saveState(stateData: any, address: string): boolean {
     if (!this.checkFormat(stateData)) {
       logger.error('Invalid channel state format in addBankrollerSigned')
       return false
     }
 
-    const stateHash = sha3(
+    const newState: SolidityTypeValue[] = [
       { t: 'bytes32', v: stateData._id },
-      { t: 'uint', v: stateData._playerBalance },
-      { t: 'uint', v: stateData._bankrollerBalance },
-      { t: 'uint', v: stateData._totalBet },
-      { t: 'uint', v: stateData._session }
-    )
-    const stateSign = this.eth.signHash(stateHash)
+      { t: 'uint256', v: '' + stateData._playerBalance },
+      { t: 'uint256', v: '' + stateData._bankrollerBalance },
+      { t: 'uint256', v: '' + stateData._totalBet },
+      { t: 'uint256', v: '' + stateData._session }
+    ]
+    
+    const stateHash = sha3(...newState)
+    const stateSign = this.eth.signHash(newState)
 
-    if (!this.states[stateHash]) this.states[stateHash] = { confirmed: false }
-    this.states[stateHash].bankroller = {
+    this.states[stateHash] = (!this.states[stateHash]) && { confirmed: false }
+    this.states[stateHash][address] = {
       ...stateData,
       _sign: stateSign,
     }
+
     this.waitStates[stateHash] = stateData._session
     return true
   }
@@ -65,15 +79,16 @@ export class ChannelState {
       return false
     }
 
-    const playerStateHash = sha3(
-      { t: 'bytes32', v: stateData._id },
-      { t: 'uint', v: stateData._playerBalance },
-      { t: 'uint', v: stateData._bankrollerBalance },
-      { t: 'uint', v: stateData._totalBet },
-      { t: 'uint', v: stateData._session }
-    )
+    const playerStateData: SolidityTypeValue[] = [
+      { t: 'bytes32', v: stateData._id                     },
+      { t: 'uint256', v: '' + stateData._playerBalance     },
+      { t: 'uint256', v: '' + stateData._bankrollerBalance },
+      { t: 'uint256', v: '' + stateData._totalBet          },
+      { t: 'uint256', v: '' + stateData._session           }
+    ]
 
-    const state = this.GetState(playerStateHash)
+    const playerStateHash = sha3(...playerStateData)
+    const state = this.getState(playerStateHash)
     if (!state || !state.bankroller) {
       logger.error('State with hash ' + playerStateHash + ' not found')
       return false
@@ -94,30 +109,31 @@ export class ChannelState {
     }
 
     // Проверяем подпись
-    const stateHash = sha3(
-      { t: 'bytes32', v: state.bankroller._id },
-      { t: 'uint', v: state.bankroller._playerBalance },
-      { t: 'uint', v: state.bankroller._bankrollerBalance },
-      { t: 'uint', v: state.bankroller._totalBet },
-      { t: 'uint', v: state.bankroller._session }
-    )
+    const newStateData: SolidityTypeValue[] = [
+      { t: 'bytes32', v: state.bankroller._id                     },
+      { t: 'uint256', v: '' + state.bankroller._playerBalance     },
+      { t: 'uint256', v: '' + state.bankroller._bankrollerBalance },
+      { t: 'uint256', v: '' + state.bankroller._totalBet          },
+      { t: 'uint256', v: '' + state.bankroller._session           }
+    ]
 
+    const stateHash = sha3(...newStateData)
+    const stateSign = this.eth.signHash(newStateData)
     if (stateHash !== playerStateHash) {
       logger.error(' state_hash!=player_state_hash ...')
       return false
     }
 
-    const recoverOpenkey = this.eth.recover(stateHash, stateData._sign)
+    const recoverOpenkey = this.eth.recover(newStateData, stateSign)
     if (recoverOpenkey.toLowerCase() !== this.playerOpenkey.toLowerCase()) {
       logger.error('State ' + recoverOpenkey + '!=' + this.playerOpenkey)
       return false
     }
 
-    this.states[stateHash].player = { ...stateData }
+    this.states[stateHash].player = { ...newStateData }
     this.states[stateHash].confirmed = true
 
     delete this.waitStates[stateHash]
-
     return true
   }
 
@@ -126,16 +142,16 @@ export class ChannelState {
   }
 
   get(hash) {
-    return this.GetState(hash)
+    return this.getState(hash)
   }
 
-  getPlayerSigned(hash?) {
-    if (!hash) hash = Object.keys(this.states).splice(-1)
-    return this.GetState(hash).player
-  }
+  // getPlayerSigned(hash?) {
+  //   if (!hash) hash = Object.keys(this.states).splice(-1)
+  //   return this.getState(hash).player
+  // }
 
-  getBankrollerSigned(hash?) {
-    if (!hash) hash = Object.keys(this.states).splice(-1)
-    return this.GetState(hash).bankroller
-  }
+  // getBankrollerSigned(hash?) {
+  //   if (!hash) hash = Object.keys(this.states).splice(-1)
+  //   return this.getState(hash).bankroller
+  // }
 }

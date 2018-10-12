@@ -4,7 +4,6 @@ import {
   SignedResponse,
   OpenChannelData,
   DAppInstanceParams,
-  SolidityTypeValue,
   IRsa, Rsa,
   CallParams,
   IGameLogic,
@@ -12,7 +11,7 @@ import {
 } from './interfaces/index'
 import { PayChannelLogic } from './PayChannelLogic'
 import { ChannelState }    from './ChannelState'
-import { sha3, dec2bet, makeSeed, bet2dec } from 'dc-ethereum-utils'
+import { sha3, dec2bet, makeSeed, bet2dec, SolidityTypeValue } from 'dc-ethereum-utils'
 import { Logger } from 'dc-logging'
 import { config } from 'dc-configs'
 
@@ -82,9 +81,7 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
     const { playerDeposit, gameData } = params
 
     logger.info(`🔐 Open channel with deposit: ${playerDeposit}`)
-    const userBalance = await this._params.Eth.getBalances()
-
-    const mineth = 0.01
+    const userBalance = await this._params.Eth.getBalances()    
     if (userBalance.eth.balance < MINIMUM_ETH) {
       throw new Error(
         `Not enough ETH to open channel: ${
@@ -92,6 +89,7 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
         }. Need ${MINIMUM_ETH}`
       )
     }
+    
     if (userBalance.bet.balance < playerDeposit) {
       throw new Error(
         `Not enough BET: ${
@@ -105,14 +103,23 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
       this._params.payChannelContractAddress,
       playerDeposit
     )
+    
     const channelId = makeSeed()
     this.channelId = channelId
+    
     const args = {
       channelId,
       playerAddress: this._params.Eth.getAccount().address,
       playerDeposit,
       gameData
     }
+
+    const argsSignature = this._params.Eth.signHash([
+      { t: 'bytes32', v: args.channelId     },
+      { t: 'address', v: args.playerAddress },
+      { t: 'uint',    v: args.playerDeposit },
+      { t: 'uint',    v: args.gameData      }
+    ])
     
     this.emit('info', {
       event       : 'deposit approved',
@@ -124,7 +131,7 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
     const {
       response: peerResponse,
       signature,
-    } = await this._peer.getOpenChannelData(args)
+    } = await this._peer.getOpenChannelData(args, argsSignature)
     const {
       bankrollerDepositWei,
       playerDepositWei,
@@ -151,7 +158,6 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
     
     this._peerRsa = new Rsa({ n, e })
     // @TODO: Проверяем возвращаемые банкроллером аргументы путем валидации хеша
-
 
     // проверяем апрув банкроллера перед открытием
     const bankrollerAllowance = await this._params.Eth.allowance(
@@ -225,16 +231,28 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
   
       if (openChannelTX.status) {
         const check = await this._peer.checkOpenChannel()
-        this.payChannelLogic._setDeposits(playerDeposit, bankrollerDeposit)
-
-        this.emit('info', {
-          event: 'Channel open',
-          data: {}
-        })
-  
-        return {
-          ...check,
-          ...args
+        if (check.state) {
+          this.payChannelLogic._setDeposits(playerDeposit, bankrollerDeposit)
+          
+          // Создаем нулевой стейт
+          this.channelState = new ChannelState(this._params.userId, this._params.Eth)
+          this.channelState.saveState({
+            _id: channelId,
+            _playerBalance: bet2dec(this.payChannelLogic._getBalance().player),
+            _bankrollerBalance: bet2dec(this.payChannelLogic._getBalance().bankroller),
+            _totalBet: '0',
+            _session: 0,
+          }, playerAddress)
+          
+          this.emit('info', {
+            event: 'Channel open',
+            data: {}
+          })
+    
+          return {
+            ...check,
+            ...args
+          }
         }
       }
     } catch (error) {
@@ -243,11 +261,24 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
     }   
   }
   async getOpenChannelData(
-    params: GetChannelDataParams
+    params: GetChannelDataParams,
+    paramsSignature: string
   ): Promise<SignedResponse<OpenChannelData>> {
     // Create RSA keys for user
-
     const { channelId, playerAddress, playerDeposit, gameData } = params
+    
+    const toRecover: SolidityTypeValue[] = [
+      { t: 'bytes32', v: channelId     },
+      { t: 'address', v: playerAddress },
+      { t: 'uint',    v: playerDeposit },
+      { t: 'uint',    v: gameData      }
+    ]
+
+    const recoverOpenkey = this._params.Eth.recover(toRecover, paramsSignature)
+    if (recoverOpenkey.toLowerCase() !== playerAddress.toLowerCase()) {
+      throw new Error('Invalid signature')
+    }
+
     this.channelId     = channelId
     this.playerAddress = playerAddress
 
@@ -273,6 +304,7 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
       gameData,
       n, e
     }
+
     // Args for open channel transaction
     const toSign: SolidityTypeValue[] = [
       { t: 'bytes32' , v: channelId            } ,
@@ -285,12 +317,13 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
       { t: 'bytes'   , v: n                    } ,
       { t: 'bytes'   , v: e                    }
     ]
-    // const hash = sha3(...toSign)
+
     const signature = this._params.Eth.signHash(toSign)
     return { response, signature }
   }
 
   async checkOpenChannel(): Promise<any> {
+    const bankrollerAddress = this._params.Eth.getAccount().address.toLowerCase()
     const channel = await this._params.payChannelContract.methods
       .channels(this.channelId)
       .call()
@@ -306,10 +339,18 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
       this.channel = channel
 
       // Устанавливаем депозит игры
-      this.payChannelLogic._setDeposits(
-        channel.playerBalance,
-        channel.bankrollerBalance
-      )
+      this.payChannelLogic._setDeposits(channel.playerBalance, channel.bankrollerBalance)
+
+      // Создаем нулевой стейт
+      this.channelState = new ChannelState(this._params.userId, this._params.Eth)
+      this.channelState.saveState({
+        _id: this.channelId,
+        _playerBalance: this.payChannelLogic._getBalance().player,
+        _bankrollerBalance: this.payChannelLogic._getBalance().bankroller,
+        _totalBet: '0',
+        _session: 0,
+      }, bankrollerAddress)
+
       this.emit('info', {
         event: 'OpenChannel checked',
         data: {
@@ -433,12 +474,9 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
       gameLogicCallResult = this._gameLogic.Game(userBet, gameData, randomHash)
     } catch (error) {
       const errorData = {
-        message: `Can't call gamelogic function with args ${{
-          userBet,
-          gameData,
-          randomHash,
-        }}`,
-        error,
+        message: `Can't call gamelogic function with args`,
+        data: [userBet, gameData, randomHash],
+        error
       }
       throw new Error(JSON.stringify(errorData))
     }
@@ -483,24 +521,76 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
     return { status: 'ok' }
   }
 
-  closeByConsent(data): { sign: string } {
-    const lastState = this.channelState.getBankrollerSigned()
+  async closeChannel(): Promise<any> {
+    logger.debug(this.channelState)
+    const playerAddress = this._params.Eth.getAccount().address
+    const lastState     = this.channelState.getState(playerAddress)
+    const closeChannelData: SolidityTypeValue[] = [
+      { t: 'bytes32', v: lastState._id                     },
+      { t: 'uint256', v: '' + lastState._playerBalance     },
+      { t: 'uint256', v: '' + lastState._bankrollerBalance },
+      { t: 'uint256', v: '' + lastState._totalBet          },
+      { t: 'uint256', v: '' + lastState._session                },
+      { t: 'bool',    v: true                              }
+    ]
 
-    // сохраняем "согласие" юзера на закрытие канала
-    this.closeByConsentData = data
+    logger.debug(closeChannelData)
 
-    // Отправляем ему свою подпись закрытия
-    const hash = sha3(
-      { t: 'bytes32', v: lastState._id },
-      { t: 'uint', v: lastState._playerBalance },
-      { t: 'uint', v: lastState._bankrollerBalance },
-      { t: 'uint', v: lastState._totalBet },
-      { t: 'uint', v: lastState._session },
-      { t: 'bool', v: true }
-    )
-    const sign = this._params.Eth.signHash(hash)
+    const signLastState = this._params.Eth.signHash(closeChannelData)
+    const { consentSignature, bankrollerAddress } = this._peer.consentCloseChannel(signLastState)
 
-    return { sign }
+    const recoverOpenkey = this._params.Eth.recover(closeChannelData, consentSignature)
+    if (recoverOpenkey.toLowerCase() !== bankrollerAddress.toLowerCase()) {
+      throw new Error('Invalid signature')
+    }
+
+    try {
+      const closeChannelArgs = [
+        lastState._id,
+        lastState._playerBalance,
+        lastState._bankrollerBalance,
+        lastState._totalBet,
+        lastState._session,
+        true,
+        consentSignature
+      ]
+
+      const closeChannelTX = await this._params.Eth.sendTransaction(
+        this._params.payChannelContract,
+        'closeByConsent',
+        closeChannelArgs
+      )
+
+      if (closeChannelTX.status) {
+        return true
+      }
+    } catch (error) {
+      throw error
+    }
+  }
+
+  consentCloseChannel(signLastState: string): any {
+    const bankrollerAddress = this._params.Eth.getAccount().address
+    const lastState         = this.channelState.getState(bankrollerAddress)
+    
+    const consentData: SolidityTypeValue[] = [
+      { t: 'bytes32', v: lastState._id                     },
+      { t: 'uint',    v: '' + lastState._playerBalance     },
+      { t: 'uint',    v: '' + lastState._bankrollerBalance },
+      { t: 'uint',    v: '' + lastState._totalBet          },
+      { t: 'uint',    v: lastState._session                },
+      { t: 'bool',    v: true                              }
+    ]
+
+    logger.debug(`ssssss`,lastState)
+
+    const recoverOpenkey = this._params.Eth.recover(consentData, signLastState)
+    if (recoverOpenkey.toLowerCase() !== this.playerAddress.toLowerCase()) {
+      throw new Error('Invalid signature')
+    }
+
+    const consentSignature  = this._params.Eth.signHash(consentData)
+    return { consentSignature, bankrollerAddress }
   }
 
   async checkCloseChannel(data) {
