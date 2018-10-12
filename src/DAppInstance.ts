@@ -433,12 +433,9 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
       gameLogicCallResult = this._gameLogic.Game(userBet, gameData, randomHash)
     } catch (error) {
       const errorData = {
-        message: `Can't call gamelogic function with args ${{
-          userBet,
-          gameData,
-          randomHash,
-        }}`,
-        error,
+        message: `Can't call gamelogic function with args`,
+        data: [userBet, gameData, randomHash],
+        error
       }
       throw new Error(JSON.stringify(errorData))
     }
