@@ -1,10 +1,10 @@
-import { checksum, makeSeed, bet2dec }         from 'dc-ethereum-utils'
 import { IDApp, DAppParams, UserId, GameInfo } from './interfaces/index'
 import { DAppInstance } from './DAppInstance'
 import { setInterval }  from 'timers'
 import { Logger }       from 'dc-logging'
 import { config }       from 'dc-configs'
 import { EventEmitter } from 'events'
+import * as Utils       from 'dc-ethereum-utils'
 
 import Contract from 'web3/eth/contract'
 
@@ -59,11 +59,11 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
     this._gameInfo = {
       gameId,
       slug,
-      hash: checksum(slug),
-      contract: params.contract,
+      hash: Utils.checksum(slug),
+      contract: params.contract
     }
     this._params = params
-    this._payChannelContract = this._params.Eth.getContract(
+    this._payChannelContract = this._params.Eth.initContract(
       contract.abi,
       contract.address
     )
@@ -113,12 +113,13 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
     const theChosen = Array.from(readyServers.values())
       .filter(readyServer => readyServer.deposit)
       .sort((a, b) => a.deposit - b.deposit)[0]
-    // TODO should be some more complicated alg
+    // TODO: should be some more complicated alg
     if (theChosen) {
       const userId = this._params.contract.address
       const { roomAddress } = await this._gameInfoRoom.connect({
-        userId: this._params.Eth.account().address,
+        userId: this._params.Eth.getAccount().address
       })
+
       this.dappInstance = new DAppInstance({
         userId,
         num: 0,
@@ -160,18 +161,19 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
 
   async _startSendingBeacon(timeOut) {
     const { balance } = await this._params.Eth.getBetBalance(
-      this._params.Eth.account().address
+      this._params.Eth.getAccount().address
     )
     const self = this
 
     this._beaconInterval = setInterval(() => {
       self.emit('ready', {
-        deposit: bet2dec(balance), // bets * 100000000,
+        // deposit: bet2dec(balance),
+        deposit: balance,
         dapp: {
           slug: self._params.slug,
           hash: self._gameInfo.hash,
         },
-        address: this._params.Eth.account().address.toLowerCase(),
+        address: this._params.Eth.getAccount().address.toLowerCase()
       })
     }, timeOut)
   }
@@ -182,9 +184,10 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
   }
 
   connect(params: { userId: string }) {
-    const roomAddress = makeSeed()
-    const { userId } = params
-    const account = this._params.Eth.account()
+    const roomAddress = Utils.makeSeed()
+    const { userId }  = params
+    const account     = this._params.Eth.getAccount()
+
     const dappInstance = new DAppInstance({
       userId,
       num: 0,
