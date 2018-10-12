@@ -81,7 +81,7 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
   async openChannel(params: OpenChannelParams) {
     const { playerDeposit, gameData } = params
 
-    logger.debug(`🔐 Open channel with deposit: ${playerDeposit}`)
+    logger.info(`🔐 Open channel with deposit: ${playerDeposit}`)
     const userBalance = await this._params.Eth.getBalances()
 
     const mineth = 0.01
@@ -99,6 +99,8 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
         } to open channel for: ${playerDeposit}`
       )
     }
+
+    logger.info(`start ERC20ApproveSafe ${playerDeposit}`)
     await this._params.Eth.ERC20ApproveSafe(
       this._params.payChannelContractAddress,
       playerDeposit
@@ -134,6 +136,7 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
     } = peerResponse
     const bankrollerDeposit = dec2bet(bankrollerDepositWei)
     
+
     if (this._params.rules.depositX * args.playerDeposit > bankrollerDeposit) {
       logger.debug({
         msg: 'Bankroller open channel bad deposit',
@@ -213,6 +216,7 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
         n, e, signature
       ]
 
+      logger.info(`start openChannel`)
       const openChannelTX = await this._params.Eth.sendTransaction(
         this._params.payChannelContract,
         'openChannel',
@@ -234,6 +238,7 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
         }
       }
     } catch (error) {
+      logger.error('Open channel error', error)
       throw error
     }   
   }
