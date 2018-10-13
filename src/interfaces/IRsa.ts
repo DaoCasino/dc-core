@@ -1,44 +1,44 @@
-import NodeRsa from 'node-rsa';
+import NodeRsa from 'node-rsa'
 
 export interface IRsa {
-  getNE: () => { n: string; e: string };
+  getNE: () => { n: string; e: string }
   encrypt: (
     buffer: Buffer | number | object | string,
     encoding?: 'buffer' | 'binary' | 'hex' | 'base64',
     sourceEncoding?: string
-  ) => string | Buffer;
-  decrypt: (buffer: Buffer, encoding?: string) => Buffer | object | string;
+  ) => string | Buffer
+  decrypt: (buffer: Buffer, encoding?: string) => Buffer | object | string
   encryptPrivate: (
     buffer: Buffer | number | object | string,
     encoding?: 'buffer' | 'binary' | 'hex' | 'base64',
     sourceEncoding?: string
-  ) => string | Buffer;
+  ) => string | Buffer
   decryptPublic: (
     buffer: Buffer,
     encoding?: string
-  ) => Buffer | object | string;
+  ) => Buffer | object | string
   verify: (
     buffer: any,
     signature: any,
     sourceEncoding?: string,
     signatureEncoding?: 'buffer' | 'binary' | 'hex' | 'base64'
-  ) => boolean;
+  ) => boolean
   sign: (
     buffer: Buffer | number | object | string,
     encoding?: 'buffer' | 'binary' | 'hex' | 'base64',
     sourceEncoding?: string
-  ) => string | Buffer;
+  ) => string | Buffer
 }
 
 export class Rsa implements IRsa {
-  private _key: NodeRsa;
+  private _key: NodeRsa
   constructor(params: any = {}) {
-    this._key = new NodeRsa(params);
+    this._key = new NodeRsa(params)
   }
 
   getNE(): { n: string; e: string } {
-    const { n, e } = this._key.keyPair;
-    return { n: `0x${n.toString(16)}`, e: `0x0${e.toString(16)}` };
+    const { n, e } = this._key.keyPair
+    return { n: `0x${n.toString(16)}`, e: `0x0${e.toString(16)}` }
   }
   /**
    *  Signing data
@@ -53,7 +53,7 @@ export class Rsa implements IRsa {
     encoding: 'buffer' | 'binary' | 'hex' | 'base64' = 'buffer',
     sourceEncoding: string = 'utf8'
   ): string | Buffer {
-    return this._key.sign(buffer, encoding, sourceEncoding);
+    return this._key.sign(buffer, encoding, sourceEncoding)
   }
   /**
    * Encrypting data method with public key
@@ -68,7 +68,7 @@ export class Rsa implements IRsa {
     encoding: 'buffer' | 'binary' | 'hex' | 'base64' = 'buffer',
     sourceEncoding: string = 'utf8'
   ): string | Buffer {
-    return this._key.encrypt(buffer, encoding, sourceEncoding);
+    return this._key.encrypt(buffer, encoding, sourceEncoding)
   }
   /**
    * Decrypting data method with private key
@@ -78,7 +78,7 @@ export class Rsa implements IRsa {
    * @returns {Buffer|object|string}
    */
   decrypt(buffer: Buffer, encoding: string): Buffer | object | string {
-    return this._key.decrypt(buffer, encoding);
+    return this._key.decrypt(buffer, encoding)
   }
 
   /**
@@ -92,7 +92,7 @@ export class Rsa implements IRsa {
     encoding: 'buffer' | 'binary' | 'hex' | 'base64' = 'buffer',
     sourceEncoding: string = 'utf8'
   ): string | Buffer {
-    return this._key.encryptPrivate(buffer, encoding, sourceEncoding);
+    return this._key.encryptPrivate(buffer, encoding, sourceEncoding)
   }
 
   /**
@@ -101,7 +101,7 @@ export class Rsa implements IRsa {
    * Parameters same as `decrypt` method
    */
   decryptPublic(buffer: Buffer, encoding: string): Buffer | object | string {
-    return this._key.decryptPublic(buffer, encoding);
+    return this._key.decryptPublic(buffer, encoding)
   }
   /**
    *  Verifying signed data
@@ -123,6 +123,6 @@ export class Rsa implements IRsa {
       signature,
       sourceEncoding,
       signatureEncoding
-    );
+    )
   }
 }
