@@ -1,13 +1,13 @@
-import { IMessagingProvider } from 'dc-messaging'
-import { Eth } from 'dc-ethereum-utils'
-import { ContractInfo } from 'dc-configs'
-import { GameLogicFunction, DAppInstanceView } from './index'
+import { IMessagingProvider } from "dc-messaging"
+import { Eth } from "dc-ethereum-utils"
+import { ContractInfo } from "dc-configs"
+import { GameLogicFunction, DAppInstanceView } from "./index"
+import { platform } from "os"
 
 export interface DAppParams {
   slug: string
   rules: any
-  // timer: number;
-  // checkTimeout: number;
+  platformId: string
   gameLogicFunction: GameLogicFunction
   contract: ContractInfo
   roomProvider: IMessagingProvider
@@ -16,7 +16,7 @@ export interface DAppParams {
 
 export interface IDApp {
   getView: () => {
-    name: string;
+    name: string
   }
   getInstancesView: () => DAppInstanceView[]
 }
