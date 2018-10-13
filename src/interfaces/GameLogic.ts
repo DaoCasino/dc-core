@@ -1,4 +1,4 @@
-import { IPayChannelLogic } from './IPayChannelLogic'
+import { IPayChannelLogic } from "./IPayChannelLogic"
 
 export interface IGameLogic {
   Game: any
