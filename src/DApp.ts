@@ -65,7 +65,9 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
       contract.address
     )
     this._payChannelContractAddress = contract.address
-    this._gameInfoRoomAddress = `${params.platformId}_${this._gameInfo.hash}`
+    this._gameInfoRoomAddress = `${params.platformId}_${
+      params.blockchainNetwork
+    }_${this._gameInfo.hash}`
   }
   getView() {
     return { name: this._params.slug }
