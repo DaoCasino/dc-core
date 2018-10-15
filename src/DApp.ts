@@ -1,123 +1,123 @@
-import { checksum, makeSeed, bet2dec } from 'dc-ethereum-utils';
-import { IDApp, DAppParams, UserId, GameInfo } from './interfaces/index';
-import { DAppInstance } from './DAppInstance';
-import { setInterval } from 'timers';
-import { Logger } from 'dc-logging';
-import { config } from 'dc-configs';
-import { EventEmitter } from 'events';
+import { IDApp, DAppParams, UserId, GameInfo } from "./interfaces/index"
+import { DAppInstance } from "./DAppInstance"
+import { setInterval } from "timers"
+import { Logger } from "dc-logging"
+import { config } from "dc-configs"
+import { EventEmitter } from "events"
+import * as Utils from "dc-ethereum-utils"
 
-import Contract from 'web3/eth/contract';
+import Contract from "web3/eth/contract"
 
-const logger = new Logger('DAppInstance');
+const logger = new Logger("DAppInstance")
 
 /*
  * DApp constructor
  */
-const SERVER_APPROVE_AMOUNT = 100000000;
 
 interface ReadyInfo {
-  deposit: number; // bets * 100000000,
+  deposit: number // bets * 100000000,
   dapp: {
-    slug: string;
-    hash: string;
-  };
-  address: string;
+    slug: string
+    hash: string
+  }
+  address: string
 }
 
 interface IGameInfoRoom {
-  on: (event: 'ready', callback: (info: ReadyInfo) => void) => void;
-  connect: ({ userId: string }) => { roomAddress: string };
+  on: (event: "ready", callback: (info: ReadyInfo) => void) => void
+  connect: ({ userId: string }) => { roomAddress: string }
 }
 
 export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
-  private _params: DAppParams;
-  _instancesMap: Map<UserId, DAppInstance>;
-  _payChannelContract: Contract;
-  _payChannelContractAddress: string;
-  _gameInfo: GameInfo;
-  _beaconInterval: NodeJS.Timer;
-  _gameInfoRoom: IGameInfoRoom;
-  dappInstance: DAppInstance;
-  _dappInstancePromise: Promise<DAppInstance | null>;
+  private _params: DAppParams
+  _instancesMap: Map<UserId, DAppInstance>
+  _payChannelContract: Contract
+  _payChannelContractAddress: string
+  _gameInfo: GameInfo
+  _beaconInterval: NodeJS.Timer
+  _gameInfoRoom: IGameInfoRoom
+  dappInstance: DAppInstance
+  _dappInstancePromise: Promise<DAppInstance | null>
+  _gameInfoRoomAddress: string
+
   constructor(params: DAppParams) {
-    super();
-    const { slug, contract } = params;
+    super()
+    const { slug, contract } = params
     if (!slug) {
-      logger.debug(['Create DApp error', params], 'error');
-      throw new Error('slug option is required');
+      logger.debug(["Create DApp error", params], "error")
+      throw new Error("slug option is required")
     }
     if (!contract) {
-      throw new Error('Contract is not specified in  DApp params');
+      throw new Error("Contract is not specified in  DApp params")
     }
-    this._instancesMap = new Map();
-    const gameId =
-      !process.env.DC_NETWORK || process.env.DC_NETWORK !== 'local'
-        ? slug
-        : `${slug}_dev`;
+    this._instancesMap = new Map()
+    const gameId = slug
 
     this._gameInfo = {
       gameId,
       slug,
-      hash: checksum(slug),
+      hash: Utils.checksum(slug),
       contract: params.contract
-    };
-    this._params = params;
-    this._payChannelContract = this._params.Eth.getContract(
+    }
+    this._params = params
+    this._payChannelContract = this._params.Eth.initContract(
       contract.abi,
       contract.address
-    );
-    this._payChannelContractAddress = contract.address;
+    )
+    this._payChannelContractAddress = contract.address
+    this._gameInfoRoomAddress = `${params.platformId}_${this._gameInfo.hash}`
   }
   getView() {
-    return { name: this._params.slug };
+    return { name: this._params.slug }
   }
 
   getInstancesView() {
     return Array.from(this._instancesMap.values()).map(instance =>
       instance.getView()
-    );
+    )
   }
   eventNames(): string[] {
-    return ['ready'];
+    return ["ready"]
   }
 
   async startClient(): Promise<DAppInstance> {
     this._gameInfoRoom = await this._params.roomProvider.getRemoteInterface<
       IGameInfoRoom
-    >(`dapp_room${this._gameInfo.hash}`);
-    const readyServers: Map<string, ReadyInfo> = new Map();
-    const self = this;
-    let dappInstance;
+    >(this._gameInfoRoomAddress)
+    const readyServers: Map<string, ReadyInfo> = new Map()
+    const self = this
+    let dappInstance
 
     const promise = new Promise<DAppInstance>((resolve, reject) => {
-      this._gameInfoRoom.on('ready', async readyInfo => {
-        readyServers.set(readyInfo.address, readyInfo);
+      this._gameInfoRoom.on("ready", async readyInfo => {
+        readyServers.set(readyInfo.address, readyInfo)
         if (this._dappInstancePromise) {
-          await this._dappInstancePromise;
+          await this._dappInstancePromise
         }
-        self._dappInstancePromise = self._chooseServer(readyServers);
-        const result = await self._dappInstancePromise;
+        self._dappInstancePromise = self._chooseServer(readyServers)
+        const result = await self._dappInstancePromise
         if (result) {
-          dappInstance = result;
-          resolve(result);
+          dappInstance = result
+          resolve(result)
         }
-      });
-    });
-    return promise;
+      })
+    })
+    return promise
   }
   async _chooseServer(
     readyServers: Map<string, ReadyInfo>
   ): Promise<DAppInstance | null> {
-    if (this.dappInstance) return this.dappInstance;
+    if (this.dappInstance) return this.dappInstance
     const theChosen = Array.from(readyServers.values())
       .filter(readyServer => readyServer.deposit)
-      .sort((a, b) => a.deposit - b.deposit)[0];
-    // TODO should be some more complicated alg
+      .sort((a, b) => a.deposit - b.deposit)[0]
+    // TODO: should be some more complicated alg
     if (theChosen) {
-      const userId = this._params.contract.address;
+      const userId = this._params.contract.address
       const { roomAddress } = await this._gameInfoRoom.connect({
-        userId: this._params.Eth.account().address
-      });
+        userId: this._params.Eth.getAccount().address
+      })
+
       this.dappInstance = new DAppInstance({
         userId,
         num: 0,
@@ -130,60 +130,51 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
         onFinish: this.onGameFinished,
         gameInfo: this._gameInfo,
         Eth: this._params.Eth
-      });
-      await this.dappInstance.startClient();
-      return this.dappInstance;
-      //     dappInstance.openChannel({
-      //       channelId: string;
-      // playerAddress: this._params.contract.address;
-      // playerDeposit: number;
-      // gameData: any;
-      //     })
+      })
+      await this.dappInstance.startClient()
+      return this.dappInstance
     }
-    logger.debug('Server not chosen');
-    return null;
+    logger.debug("Server not chosen")
+    return null
   }
   async startServer() {
     await this._params.roomProvider.exposeSevice(
-      `dapp_room${this._gameInfo.hash}`,
+      this._gameInfoRoomAddress,
       this,
       true
-    );
-    await this._params.Eth.ERC20ApproveSafe(
-      this._params.contract.address,
-      SERVER_APPROVE_AMOUNT
-    );
-
-    return this._startSendingBeacon(3000);
+    )
+    return this._startSendingBeacon(3000)
   }
 
   async _startSendingBeacon(timeOut) {
     const { balance } = await this._params.Eth.getBetBalance(
-      this._params.Eth.account().address
-    );
-    const self = this;
+      this._params.Eth.getAccount().address
+    )
+    const self = this
 
     this._beaconInterval = setInterval(() => {
-      self.emit('ready', {
-        deposit: bet2dec(balance), // bets * 100000000,
+      self.emit("ready", {
+        // deposit: bet2dec(balance),
+        deposit: balance,
         dapp: {
           slug: self._params.slug,
           hash: self._gameInfo.hash
         },
-        address: this._params.Eth.account().address.toLowerCase()
-      });
-    }, timeOut);
+        address: this._params.Eth.getAccount().address.toLowerCase()
+      })
+    }, timeOut)
   }
 
   // User connect
   onGameFinished(userId: UserId) {
-    this._instancesMap.delete(userId);
+    this._instancesMap.delete(userId)
   }
 
   connect(params: { userId: string }) {
-    const roomAddress = makeSeed();
-    const { userId } = params;
-    const account = this._params.Eth.account();
+    const roomAddress = Utils.makeSeed()
+    const { userId } = params
+    const account = this._params.Eth.getAccount()
+
     const dappInstance = new DAppInstance({
       userId,
       num: 0,
@@ -196,12 +187,12 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
       onFinish: this.onGameFinished,
       gameInfo: this._gameInfo,
       Eth: this._params.Eth
-    });
-    dappInstance.startServer();
+    })
+    dappInstance.startServer()
     // TODO remove circular dependency
 
-    this._instancesMap.set(userId, dappInstance);
-    logger.debug(`User ${userId} connected to  ${this._params.slug}`);
-    return { roomAddress };
+    this._instancesMap.set(userId, dappInstance)
+    logger.debug(`User ${userId} connected to  ${this._params.slug}`)
+    return { roomAddress }
   }
 }
