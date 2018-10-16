@@ -88,7 +88,7 @@ export interface IDAppPeerInstance {
     openChannelData: OpenChannelData,
     signature: string
   ): Promise<any | Error>
-  closeChannel(closeData: CloseChannelData): Promise<any | Error>
+  // closeChannel(closeData: CloseChannelData): Promise<any | Error>
 }
 
 export interface IDAppDealerInstance {
