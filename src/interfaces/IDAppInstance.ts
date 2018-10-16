@@ -4,6 +4,8 @@ import Contract from 'web3/eth/contract'
 import { GameInfo } from './GameInfo'
 import { GameLogicFunction } from './index'
 
+export type UserId = string
+
 export interface DAppInstanceParams {
   userId: UserId
   num: number
@@ -17,8 +19,6 @@ export interface DAppInstanceParams {
   gameInfo: GameInfo
   Eth: Eth
 }
-
-export type UserId = string
 
 export interface OpenChannelParams {
   playerAddress: string
@@ -58,6 +58,46 @@ export interface DAppInstanceView {
   profit: number
   playerAddress: string
 }
+
+export interface ConnectData {
+  peerAddress: string,
+  deposit: number,
+  gameData: number[]
+}
+
+export interface IDAppPeerInstance {
+  on(event: string, func: (data: any) => void)
+  startClient(): Promise<any | Error>
+  // call(data: CallParams): Promise<{
+  //   signature: string;
+  //   randomHash: string;
+  //   callResult: any;
+  // } | Error>
+  connect(connectData: ConnectData): Promise<any | Error>
+  disconnect(): Promise<any | Error>
+  openChannel(
+    openChannelData: OpenChannelData,
+    signature: string
+  ): Promise<any | Error>
+  // closeChannel(): Promise<any | Error>
+}
+
+export interface IDAppDealerInstance {
+  on(event: string, func: (data: any) => void)
+  startServer(): any
+  // call(data: CallParams): Promise<{
+  //   callResult: any,
+  //   randomSignature: string
+  // } | Error>
+  getOpenChannelData(
+    data: OpenChannelParams,
+    signature: string
+  ): Promise<SignedResponse<OpenChannelData>>
+  checkOpenChannel(): Promise<any | Error>
+  // checkCloseChannel: (data: any) => void
+  // consentCloseChannel(stateSignature: string): any
+}
+
 export interface IDAppInstance {
   on(event: string, func: (data: any) => void)
   getOpenChannelData: (

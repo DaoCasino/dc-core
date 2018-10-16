@@ -171,9 +171,9 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
       bankrollerAddress
     )
     if (bankrollerAllowance < dec2bet(bankrollerDeposit)) {
-      throw new Error(
-        `Bankroller allowance too low ${bankrollerAllowance} for deposit ${bankrollerDeposit}`
-      )
+      throw new Error(`
+        Bankroller allowance too low ${bankrollerAllowance} for deposit ${bankrollerDeposit}
+      `)
     }
 
     this.emit("info", {
@@ -213,10 +213,7 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
     ]
 
     const recoverOpenkey = this._params.Eth.recover(toRecover, signature)
-    if (
-      recoverOpenkey.toLowerCase() !==
-      peerResponse.bankrollerAddress.toLowerCase()
-    ) {
+    if (recoverOpenkey.toLowerCase() !== peerResponse.bankrollerAddress.toLowerCase()) {
       throw new Error("Invalid signature")
     }
 
