@@ -65,6 +65,15 @@ export interface ConnectData {
   gameData: number[]
 }
 
+export interface CloseChannelData {
+  id: string,
+  playerBalance: number,
+  bankrollerBalance: number,
+  totalBet: number,
+  session: number,
+  consent: boolean
+}
+
 export interface IDAppPeerInstance {
   on(event: string, func: (data: any) => void)
   startClient(): Promise<any | Error>
@@ -74,12 +83,12 @@ export interface IDAppPeerInstance {
   //   callResult: any;
   // } | Error>
   connect(connectData: ConnectData): Promise<any | Error>
-  disconnect(): Promise<any | Error>
+  // disconnect(): Promise<any | Error>
   openChannel(
     openChannelData: OpenChannelData,
     signature: string
   ): Promise<any | Error>
-  // closeChannel(): Promise<any | Error>
+  closeChannel(closeData: CloseChannelData): Promise<any | Error>
 }
 
 export interface IDAppDealerInstance {
