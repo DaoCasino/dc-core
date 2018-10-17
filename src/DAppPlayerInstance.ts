@@ -247,8 +247,8 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
         if (checkChannel.state) {
           /** Set start deposit with game */
           this.Balances._setDeposits(
-            dec2bet(params.playerDepositWei),
-            dec2bet(params.bankrollerDepositWei)  
+            params.playerDepositWei,
+            params.bankrollerDepositWei
           )
 
           /** Create channel state instance and save start save */
@@ -276,7 +276,7 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
   async play( params: { userBet: number, gameData: any } ) {
     this._nonce++
     const {userBet, gameData} = params
-    
+
     const seed = makeSeed()
     const toSign: SolidityTypeValue[] = [
       { t: "bytes32", v: this.channelId },
