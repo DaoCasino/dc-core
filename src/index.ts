@@ -1,6 +1,6 @@
 export * from './interfaces/index'
 export * from './PayChannelLogic'
 export * from './DAppInstance'
-export * from './DAppPeerInstance'
+export * from './DAppPlayerInstance'
 export * from './DApp'
 export * from './GlobalGameLogicStore'

@@ -38,6 +38,7 @@ export class ChannelState {
 
     for (const key in this.states[hash]) {
       if (key.toLowerCase() === address.toLowerCase()) {
+        logger.debug(this.states[hash][key])
         return this.states[hash][key]
       }
     }

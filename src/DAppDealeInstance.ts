@@ -3,11 +3,11 @@ import {
   IRsa,
   IGameLogic,
   CallParams,
-  ConnectData,
+  ConnectParams,
+  ConsentResult,
   SignedResponse,
-  OpenChannelData,
   OpenChannelParams,
-  IDAppPeerInstance,
+  IDAppPlayerInstance,
   DAppInstanceParams,
   IDAppDealerInstance,
   GetChannelDataParams
@@ -30,7 +30,7 @@ import { EventEmitter } from "events"
 const log = new Logger("PeerInstance")
 
 export default class DAppDealerInstance extends EventEmitter implements IDAppDealerInstance {
-  private _peer: IDAppPeerInstance
+  private _peer: IDAppPlayerInstance
   private _dealer: IDAppDealerInstance
   private _config: any
   private _params: DAppInstanceParams
@@ -83,7 +83,7 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
   async getOpenChannelData(
     params: GetChannelDataParams,
     paramsSignature: string
-  ): Promise<SignedResponse<OpenChannelData>> {
+  ): Promise<SignedResponse<OpenChannelParams>> {
     /** Parse params */
     const {
       channelId,
@@ -115,43 +115,48 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
     const bankrollerAddress = this._params.Eth.getAccount().address
     const bankrollerDeposit = playerDeposit * this._params.rules.depositX
     this.bankrollerDeposit = bankrollerDeposit
-    const openingBlock = await this._params.Eth.getBlockNumber()
-
-    // Args for open channel transaction
-    const { n, e } = this.Rsa.getNE()
-    const playerDepositWei = bet2dec(playerDeposit)
-    const bankrollerDepositWei = bet2dec(bankrollerDeposit)
-    this.playerDepositWei = playerDepositWei
-    this.bankrollerDepositWei = bankrollerDepositWei
-
-    const response = {
-      channelId,
-      playerAddress,
-      playerDepositWei,
-      bankrollerAddress,
-      bankrollerDepositWei,
-      openingBlock,
-      gameData,
-      n,
-      e
+    
+    try {
+      const openingBlock = await this._params.Eth.getBlockNumber()
+      // Args for open channel transaction
+      const { n, e } = this.Rsa.getNE()
+      log.debug('' + playerDeposit)
+      const playerDepositWei = bet2dec(playerDeposit)
+      const bankrollerDepositWei = bet2dec(bankrollerDeposit)
+      this.playerDepositWei = playerDepositWei
+      this.bankrollerDepositWei = bankrollerDepositWei
+  
+      const response = {
+        channelId,
+        playerAddress,
+        playerDepositWei,
+        bankrollerAddress,
+        bankrollerDepositWei,
+        openingBlock,
+        gameData,
+        n,
+        e
+      }
+    
+      // Args for open channel transaction
+      const toSign: SolidityTypeValue[] = [
+        { t: "bytes32", v: channelId },
+        { t: "address", v: playerAddress },
+        { t: "address", v: bankrollerAddress },
+        { t: "uint", v: playerDepositWei },
+        { t: "uint", v: bankrollerDepositWei },
+        { t: "uint", v: openingBlock },
+        { t: "uint", v: gameData },
+        { t: "bytes", v: n },
+        { t: "bytes", v: e }
+      ]
+  
+      /** Sign args for open channel */
+      const signature = this._params.Eth.signHash(toSign)
+      return { response, signature }
+    } catch (error) {
+      throw error
     }
- 
-    // Args for open channel transaction
-    const toSign: SolidityTypeValue[] = [
-      { t: "bytes32", v: channelId },
-      { t: "address", v: playerAddress },
-      { t: "address", v: bankrollerAddress },
-      { t: "uint", v: playerDepositWei },
-      { t: "uint", v: bankrollerDepositWei },
-      { t: "uint", v: openingBlock },
-      { t: "uint", v: gameData },
-      { t: "bytes", v: n },
-      { t: "bytes", v: e }
-    ]
-
-    /** Sign args for open channel */
-    const signature = this._params.Eth.signHash(toSign)
-    return { response, signature }
   }
 
   async checkOpenChannel(): Promise<any | Error> {
@@ -201,6 +206,69 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
           bankrollerBalance: channel.bankrollerBalance
         }
       })
+      return channel
+    } else {
+      throw new Error("channel not found")
+    }
+  }
+
+  consentCloseChannel(stateSignature: string): ConsentResult {
+    /** Get bankroller Address and last state for close channel */
+    const bankrollerAddress = this._params.Eth.getAccount().address
+    const lastState = this.channelState.getState(bankrollerAddress)
+
+    /** create structure for recover signature */
+    const consentData: SolidityTypeValue[] = [
+      { t: "bytes32", v: lastState._id },
+      { t: "uint", v: "" + lastState._playerBalance },
+      { t: "uint", v: "" + lastState._bankrollerBalance },
+      { t: "uint", v: "" + lastState._totalBet },
+      { t: "uint", v: lastState._session },
+      { t: "bool", v: true }
+    ]
+
+    /**
+     * Recover address with signature and params
+     * if recover open key not equal player address
+     * then throw error
+     */
+    const recoverOpenkey = this._params.Eth.recover(consentData, stateSignature)
+    if (recoverOpenkey.toLowerCase() !== this.playerAddress.toLowerCase()) {
+      throw new Error("Invalid signature")
+    }
+
+    /** Sign and return consent structure */
+    const consentSignature = this._params.Eth.signHash(consentData)
+    return { consentSignature, bankrollerAddress }
+  }
+
+  async checkCloseChannel(): Promise<any | Error> {
+    /** Check channel state */
+    const channel = await this._params.payChannelContract.methods
+      .channels(this.channelId)
+      .call()
+    
+    /**
+     * If state = 2 then channel closed
+     * and game over
+     */
+    if (
+      channel.state === "2" &&
+      channel.player.toLowerCase() === this._params.userId.toLowerCase() &&
+      channel.bankroller.toLowerCase() === this._params.Eth.getAccount().address.toLowerCase()
+    ) {
+      this.payChannelLogic = null
+      this.channelState = null
+      this.emit("info", {
+        event: "Close channel checked",
+        data: {
+          player: channel.player.toLowerCase(),
+          bankroller: channel.bankroller.toLowerCase(),
+          playerBalance: channel.playerBalance,
+          bankrollerBalance: channel.bankrollerBalance
+        }
+      })
+
       return channel
     } else {
       throw new Error("channel not found")

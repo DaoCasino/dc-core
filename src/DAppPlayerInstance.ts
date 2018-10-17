@@ -3,13 +3,13 @@ import {
   IRsa,
   IGameLogic,
   CallParams,
-  ConnectData,
+  ConnectParams,
   SignedResponse,
-  OpenChannelData,
   OpenChannelParams,
-  IDAppPeerInstance,
+  CloseChannelParams,
   DAppInstanceParams,
   IDAppDealerInstance,
+  IDAppPlayerInstance,
   GetChannelDataParams
 } from "./interfaces/index"
 
@@ -29,8 +29,8 @@ import { EventEmitter } from "events"
 
 const log = new Logger("PeerInstance")
 
-export default class DAppPeerInstance extends EventEmitter implements IDAppPeerInstance {
-  private _peer: IDAppPeerInstance
+export default class DAppPeerInstance extends EventEmitter implements IDAppPlayerInstance {
+  private _peer: IDAppPlayerInstance
   private _dealer: IDAppDealerInstance
   private _config: any
   private _params: DAppInstanceParams
@@ -67,12 +67,12 @@ export default class DAppPeerInstance extends EventEmitter implements IDAppPeerI
     >(this._params.roomAddress)
   }
 
-  async connect(connectData: ConnectData): Promise<any | Error> {
+  async connect(connectData: ConnectParams): Promise<any | Error> {
     /** Parse method params */
-    const { deposit, gameData } = connectData
+    const { playerDeposit, gameData } = connectData
 
     /** Check peer balance */
-    log.info(`🔐 Open channel with deposit: ${deposit}`)
+    log.info(`🔐 Open channel with deposit: ${playerDeposit}`)
     const userBalance = await this._params.Eth.getBalances()
     
     /**
@@ -90,10 +90,10 @@ export default class DAppPeerInstance extends EventEmitter implements IDAppPeerI
      * If peer BET balance less peer deposit
      * then throw Error
      */
-    if (userBalance.bet.balance < deposit) {
+    if (userBalance.bet.balance < playerDeposit) {
       throw new Error(`
         Not enough BET: ${userBalance.bet.balance}
-        to open channel for: ${deposit}
+        to open channel for: ${playerDeposit}
       `)
     }
 
@@ -102,10 +102,10 @@ export default class DAppPeerInstance extends EventEmitter implements IDAppPeerI
      * and if allowance not enough then
      * start ERC20 approve
      */
-    log.info(`start ERC20ApproveSafe ${deposit}`)
+    log.info(`start ERC20ApproveSafe ${playerDeposit}`)
     await this._params.Eth.ERC20ApproveSafe(
       this._params.payChannelContractAddress,
-      deposit
+      playerDeposit
     )
 
     /** Emit info for approved deposit */
@@ -113,7 +113,7 @@ export default class DAppPeerInstance extends EventEmitter implements IDAppPeerI
       event: "deposit approved",
       address: this._params.Eth.getAccount().address,
       gameAddress: this._params.payChannelContractAddress,
-      amount: deposit
+      amount: playerDeposit
     })
 
     /** Create channel ID create args peer */
@@ -121,7 +121,7 @@ export default class DAppPeerInstance extends EventEmitter implements IDAppPeerI
     const args = {
       channelId: this.channelId,
       playerAddress: this._params.Eth.getAccount().address,
-      playerDeposit: deposit,
+      playerDeposit,
       gameData
     }
 
@@ -155,7 +155,7 @@ export default class DAppPeerInstance extends EventEmitter implements IDAppPeerI
         msg: "Bankroller open channel bad deposit",
         data: {
           bankrollerDeposit,
-          deposit,
+          playerDeposit,
           depositX: this._params.rules.depositX
         }
       })
@@ -195,7 +195,7 @@ export default class DAppPeerInstance extends EventEmitter implements IDAppPeerI
       { t: "bytes32", v: this.channelId },
       { t: "address", v: args.playerAddress },
       { t: "address", v: peerResponse.bankrollerAddress },
-      { t: "uint", v: '' + bet2dec(deposit) },
+      { t: "uint", v: '' + bet2dec(playerDeposit) },
       { t: "uint", v: peerResponse.bankrollerDepositWei },
       { t: "uint", v: peerResponse.openingBlock },
       { t: "uint", v: gameData },
@@ -215,7 +215,7 @@ export default class DAppPeerInstance extends EventEmitter implements IDAppPeerI
     }
   }
 
-  async openChannel(params: OpenChannelData, signature: string): Promise<any | Error> {
+  async openChannel(params: OpenChannelParams, signature: string): Promise<any | Error> {
     /** Create open channel arguments */
     const openChannelArgs = [
       params.channelId,
@@ -241,8 +241,8 @@ export default class DAppPeerInstance extends EventEmitter implements IDAppPeerI
 
       if (openChannelTX.status) {
         /** Check dealer channel */
-        const check = await this._dealer.checkOpenChannel()
-        if (check.state) {
+        const checkChannel = await this._dealer.checkOpenChannel()
+        if (checkChannel.state) {
           /** Set start deposit with game */
           this.payChannelLogic._setDeposits(
             dec2bet(params.playerDepositWei),
@@ -254,19 +254,93 @@ export default class DAppPeerInstance extends EventEmitter implements IDAppPeerI
           this.channelState.saveState(
             {
               _id: params.channelId,
-              _playerBalance: bet2dec(
-                this.payChannelLogic._getBalance().player
-              ),
-              _bankrollerBalance: bet2dec(
-                this.payChannelLogic._getBalance().bankroller
-              ),
+              _playerBalance: bet2dec(this.payChannelLogic._getBalance().player),
+              _bankrollerBalance: bet2dec(this.payChannelLogic._getBalance().bankroller),
               _totalBet: "0",
               _session: 0
             },
             params.playerAddress
           )
 
-          return { ...check }
+          return { ...checkChannel }
+        }
+      }
+    } catch (error) {
+      throw error
+    }
+  }
+
+  async disconnect() {
+    /**
+     * Get player address and last state for close
+     * channel and create structure for sign last state
+     */
+    const playerAddress = this._params.Eth.getAccount().address
+    const lastState = this.channelState.getState(playerAddress)
+    const closeChannelData: SolidityTypeValue[] = [
+      { t: "bytes32", v: lastState._id },
+      { t: "uint256", v: "" + lastState._playerBalance },
+      { t: "uint256", v: "" + lastState._bankrollerBalance },
+      { t: "uint256", v: "" + lastState._totalBet },
+      { t: "uint256", v: "" + lastState._session },
+      { t: "bool", v: true }
+    ]
+    /**
+     * Sign last state for close channel and request to
+     * consent close channel bankroller 
+     */
+    const signLastState = this._params.Eth.signHash(closeChannelData)
+    const {
+      consentSignature,
+      bankrollerAddress
+    } = this._dealer.consentCloseChannel(signLastState)
+    /**
+     * Check consent bankroller
+     * if recover open key not equal bankroller address
+     * throw error
+     */
+    const recoverOpenkey = this._params.Eth.recover(closeChannelData, consentSignature)
+    if (recoverOpenkey.toLowerCase() !== bankrollerAddress.toLowerCase()) {
+      throw new Error("Invalid signature")
+    }
+
+    /** Send close channel transaction */
+    await this.closeChannel(lastState, consentSignature)
+    return { ...lastState }
+  }
+
+  async closeChannel(params: CloseChannelParams, paramsSignature: string): Promise<any | Error> {
+    /** Generate params for close channel with method params */
+    const closeParams = [
+      params._id,
+      params._playerBalance,
+      params._bankrollerBalance,
+      params._totalBet,
+      params._session,
+      true,
+      paramsSignature
+    ]
+
+    try {
+      log.debug(`start openChannel transaction`)
+      const closeChannelTX = await this._params.Eth.sendTransaction(
+        this._params.payChannelContract,
+        "closeByConsent",
+        closeParams
+      )
+
+      /**
+       * If TX success then benkroller
+       * check channel status if status = 2
+       * then channel closed and game over
+       */
+      if (closeChannelTX.status) {
+        const checkChannel = await this._dealer.checkCloseChannel()
+        if (checkChannel.state === '2') {
+          this.payChannelLogic = null
+          this.channelState = null
+          this.emit("info", {event: 'Channel closed'})
+          return { ...checkChannel }
         }
       }
     } catch (error) {

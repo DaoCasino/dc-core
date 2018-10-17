@@ -1,8 +1,8 @@
 import {
   IDAppInstance,
-  OpenChannelParams,
+  ConnectParams,
   SignedResponse,
-  OpenChannelData,
+  OpenChannelParams,
   DAppInstanceParams,
   IRsa,
   Rsa,
@@ -84,7 +84,7 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
       >(this._params.roomAddress)
     }
   }
-  async openChannel(params: OpenChannelParams) {
+  async openChannel(params: ConnectParams) {
     const { playerDeposit, gameData } = params
 
     logger.info(`🔐 Open channel with deposit: ${playerDeposit}`)
@@ -283,7 +283,7 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
   async getOpenChannelData(
     params: GetChannelDataParams,
     paramsSignature: string
-  ): Promise<SignedResponse<OpenChannelData>> {
+  ): Promise<SignedResponse<OpenChannelParams>> {
     // Create RSA keys for user
     const { channelId, playerAddress, playerDeposit, gameData } = params
 
@@ -572,10 +572,7 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
       bankrollerAddress
     } = this._peer.consentCloseChannel(signLastState)
 
-    const recoverOpenkey = this._params.Eth.recover(
-      closeChannelData,
-      consentSignature
-    )
+    const recoverOpenkey = this._params.Eth.recover(closeChannelData, consentSignature)
     if (recoverOpenkey.toLowerCase() !== bankrollerAddress.toLowerCase()) {
       throw new Error("Invalid signature")
     }
@@ -617,8 +614,6 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
       { t: "uint", v: lastState._session },
       { t: "bool", v: true }
     ]
-
-    logger.debug(`ssssss`, lastState)
 
     const recoverOpenkey = this._params.Eth.recover(consentData, signLastState)
     if (recoverOpenkey.toLowerCase() !== this.playerAddress.toLowerCase()) {

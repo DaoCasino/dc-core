@@ -11,7 +11,7 @@ import Contract from "web3/eth/contract"
 import { setInterval } from "timers"
 import { DAppInstance } from "./DAppInstance"
 import { EventEmitter } from "events"
-import DAppPeerInstance from './DAppPeerInstance'
+import DAppPlayerInstance from './DAppPlayerInstance'
 import DAppDealerInstance from './DAppDealeInstance'
 import * as Utils from "dc-ethereum-utils"
 
@@ -44,8 +44,8 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
   _gameInfo: GameInfo
   _beaconInterval: NodeJS.Timer
   _gameInfoRoom: IGameInfoRoom
-  dappInstance: DAppPeerInstance
-  _dappInstancePromise: Promise<DAppPeerInstance | null>
+  dappInstance: DAppPlayerInstance
+  _dappInstancePromise: Promise<DAppPlayerInstance | null>
   _gameInfoRoomAddress: string
 
   constructor(params: DAppParams) {
@@ -96,14 +96,14 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
     return ["ready"]
   }
 
-  async startClient(): Promise<DAppPeerInstance> {
+  async startClient(): Promise<DAppPlayerInstance> {
     this._gameInfoRoom = await this._params.roomProvider.getRemoteInterface<
       IGameInfoRoom
     >(this._gameInfoRoomAddress)
 
     const readyServers: Map<string, ReadyInfo> = new Map()
 
-    const prommise = new Promise<DAppPeerInstance>((resolve, reject) => {
+    const prommise = new Promise<DAppPlayerInstance>((resolve, reject) => {
       this._gameInfoRoom.on("ready", async readyInfo => {
         readyServers.set(readyInfo.address, readyInfo)
 
@@ -123,7 +123,7 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
 
   async _chooseServer(
     readyServers: Map<string, ReadyInfo>
-  ): Promise<DAppPeerInstance | null> {
+  ): Promise<DAppPlayerInstance | null> {
     if (this.dappInstance) return this.dappInstance
 
     const theChosen = Array.from(readyServers.values())
@@ -138,7 +138,7 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
         userId
       })
 
-      this.dappInstance = new DAppPeerInstance({
+      this.dappInstance = new DAppPlayerInstance({
         userId,
         num: 0,
         rules: this._params.rules,
