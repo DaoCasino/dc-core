@@ -29,13 +29,14 @@ import { EventEmitter } from "events"
 
 const log = new Logger("PeerInstance")
 
-export default class DAppDealerInstance extends EventEmitter implements IDAppDealerInstance {
+export default class DAppDealerInstance extends EventEmitter
+  implements IDAppDealerInstance {
   private _peer: IDAppPlayerInstance
   private _dealer: IDAppDealerInstance
   private _config: any
   private _params: DAppInstanceParams
   private _gameLogic: IGameLogic
-  
+
   Rsa: IRsa
   channel: any
   channelId: string
@@ -52,9 +53,9 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
     this._config = config
     this._gameLogic = this._params.gameLogicFunction(this.payChannelLogic)
     this.payChannelLogic = new PayChannelLogic()
-    
+
     this.Rsa = new Rsa()
-    log.debug('Dealer instance init')
+    log.debug("Dealer instance init")
   }
 
   getView() {
@@ -72,7 +73,7 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
     this._peer.on(event, func)
   }
 
-  startServer(): any {
+  start() {
     return this._params.roomProvider.exposeSevice(
       this._params.roomAddress,
       this,
@@ -85,12 +86,7 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
     paramsSignature: string
   ): Promise<SignedResponse<OpenChannelParams>> {
     /** Parse params */
-    const {
-      channelId,
-      playerAddress,
-      playerDeposit,
-      gameData
-    } = params
+    const { channelId, playerAddress, playerDeposit, gameData } = params
 
     /**
      * Create structure for recover
@@ -101,31 +97,31 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
     const toRecover: SolidityTypeValue[] = [
       { t: "bytes32", v: channelId },
       { t: "address", v: playerAddress },
-      { t: "uint", v: '' + playerDeposit },
+      { t: "uint", v: "" + playerDeposit },
       { t: "uint", v: gameData }
     ]
     const recoverOpenkey = this._params.Eth.recover(toRecover, paramsSignature)
     if (recoverOpenkey.toLowerCase() !== playerAddress.toLowerCase()) {
       throw new Error("Invalid signature")
     }
- 
+
     this.channelId = channelId
     this.playerAddress = playerAddress
 
     const bankrollerAddress = this._params.Eth.getAccount().address
     const bankrollerDeposit = playerDeposit * this._params.rules.depositX
     this.bankrollerDeposit = bankrollerDeposit
-    
+
     try {
       const openingBlock = await this._params.Eth.getBlockNumber()
       // Args for open channel transaction
       const { n, e } = this.Rsa.getNE()
-      log.debug('' + playerDeposit)
+      log.debug("" + playerDeposit)
       const playerDepositWei = bet2dec(playerDeposit)
       const bankrollerDepositWei = bet2dec(bankrollerDeposit)
       this.playerDepositWei = playerDepositWei
       this.bankrollerDepositWei = bankrollerDepositWei
-  
+
       const response = {
         channelId,
         playerAddress,
@@ -137,7 +133,7 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
         n,
         e
       }
-    
+
       // Args for open channel transaction
       const toSign: SolidityTypeValue[] = [
         { t: "bytes32", v: channelId },
@@ -150,7 +146,7 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
         { t: "bytes", v: n },
         { t: "bytes", v: e }
       ]
-  
+
       /** Sign args for open channel */
       const signature = this._params.Eth.signHash(toSign)
       return { response, signature }
@@ -159,7 +155,7 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
     }
   }
 
-  async checkOpenChannel(): Promise<any | Error> {
+  async checkOpenChannel(): Promise<any> {
     const bankrollerAddress = this._params.Eth.getAccount().address.toLowerCase()
     const channel = await this._params.payChannelContract.methods
       .channels(this.channelId)
@@ -242,12 +238,12 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
     return { consentSignature, bankrollerAddress }
   }
 
-  async checkCloseChannel(): Promise<any | Error> {
+  async checkCloseChannel(): Promise<any> {
     /** Check channel state */
     const channel = await this._params.payChannelContract.methods
       .channels(this.channelId)
       .call()
-    
+
     /**
      * If state = 2 then channel closed
      * and game over
@@ -255,7 +251,8 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
     if (
       channel.state === "2" &&
       channel.player.toLowerCase() === this._params.userId.toLowerCase() &&
-      channel.bankroller.toLowerCase() === this._params.Eth.getAccount().address.toLowerCase()
+      channel.bankroller.toLowerCase() ===
+        this._params.Eth.getAccount().address.toLowerCase()
     ) {
       this.payChannelLogic = null
       this.channelState = null

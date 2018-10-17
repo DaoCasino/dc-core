@@ -1,5 +1,5 @@
 import {
-  IDAppInstance,
+  IDAppInstanceOld,
   ConnectParams,
   SignedResponse,
   OpenChannelParams,
@@ -29,8 +29,8 @@ const MINIMUM_ETH = 0.001
 const GAS_LIMIT = 4600000
 const GAS_PRICE = 40 * 1000000000
 
-export class DAppInstance extends EventEmitter implements IDAppInstance {
-  private _peer: IDAppInstance
+export class DAppInstance extends EventEmitter implements IDAppInstanceOld {
+  private _peer: IDAppInstanceOld
   private _gameLogic: IGameLogic
   _params: DAppInstanceParams
   Rsa: IRsa
@@ -83,7 +83,7 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
   async startClient() {
     if (!this._peer) {
       this._peer = await this._params.roomProvider.getRemoteInterface<
-        IDAppInstance
+        IDAppInstanceOld
       >(this._params.roomAddress)
     }
   }
@@ -216,7 +216,10 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
     ]
 
     const recoverOpenkey = this._params.Eth.recover(toRecover, signature)
-    if (recoverOpenkey.toLowerCase() !== peerResponse.bankrollerAddress.toLowerCase()) {
+    if (
+      recoverOpenkey.toLowerCase() !==
+      peerResponse.bankrollerAddress.toLowerCase()
+    ) {
       throw new Error("Invalid signature")
     }
 
@@ -575,7 +578,10 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
       bankrollerAddress
     } = this._peer.consentCloseChannel(signLastState)
 
-    const recoverOpenkey = this._params.Eth.recover(closeChannelData, consentSignature)
+    const recoverOpenkey = this._params.Eth.recover(
+      closeChannelData,
+      consentSignature
+    )
     if (recoverOpenkey.toLowerCase() !== bankrollerAddress.toLowerCase()) {
       throw new Error("Invalid signature")
     }
