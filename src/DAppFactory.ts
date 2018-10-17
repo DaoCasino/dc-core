@@ -27,7 +27,8 @@ import { config, ContractInfo, BlockchainNetwork, IConfig } from "dc-configs"
 import { GlobalGameLogicStore } from "./GlobalGameLogicStore"
 import { DApp } from "./DApp"
 import { IMessagingProvider } from "dc-messaging"
-import { DAppInstance } from "./DAppInstance"
+import { DAppPlayerInstance } from "./DAppPlayerInstance"
+import { DAppDealerInstance } from "./DAppDealerInstance"
 
 export class DAppFactory {
   eth: Eth
@@ -77,17 +78,16 @@ export class DAppFactory {
     const dapp = new DApp(dappParams)
     return dapp
   }
-  
+
   async startClient(params: {
     name: string
     gameLogicFunction: GameLogicFunction
     contract: ContractInfo
     rules: any
-  // }): Promise<DAppInstance> {
-  }) {
-    // const dapp = await this.create(params)
-    // const dappInstance = await dapp.startClient()
-    // return dappInstance
+  }): Promise<DAppPlayerInstance> {
+    const dapp = await this.create(params)
+    const dappInstance = await dapp.startClient()
+    return dappInstance
   }
 
   async startDealer(params: {

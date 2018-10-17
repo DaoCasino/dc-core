@@ -29,7 +29,7 @@ import { EventEmitter } from "events"
 
 const log = new Logger("PeerInstance")
 
-export default class DAppPlayerInstance extends EventEmitter
+export class DAppPlayerInstance extends EventEmitter
   implements IDAppPlayerInstance {
   private _peer: IDAppPlayerInstance
   private _dealer: IDAppDealerInstance
