@@ -29,7 +29,7 @@ const MINIMUM_ETH = 0.001
 const GAS_LIMIT = 4600000
 const GAS_PRICE = 40 * 1000000000
 
-export class DAppInstance extends EventEmitter implements IDAppInstanceOld {
+export class DAppInstanceOld extends EventEmitter implements IDAppInstanceOld {
   private _peer: IDAppInstanceOld
   private _gameLogic: IGameLogic
   _params: DAppInstanceParams
