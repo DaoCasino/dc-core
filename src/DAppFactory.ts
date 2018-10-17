@@ -23,7 +23,7 @@ import {
 } from "dc-ethereum-utils"
 import { Logger } from "dc-logging"
 
-import { config, ContractInfo, BlockchainNetwork } from "dc-configs"
+import { config, ContractInfo, BlockchainNetwork, IConfig } from "dc-configs"
 
 import { GlobalGameLogicStore } from "./GlobalGameLogicStore"
 import { DApp } from "./DApp"
@@ -32,21 +32,20 @@ import { DAppInstance } from "./DAppInstance"
 
 export class DAppFactory {
   eth: Eth
-  platformId: string
-  blockchainNetwork: BlockchainNetwork
   private _transportProvider: IMessagingProvider
-  constructor(transportProvider: IMessagingProvider) {
+  private _configuration: IConfig
+  constructor(
+    transportProvider: IMessagingProvider,
+    configuration: IConfig = config
+  ) {
     const {
       gasPrice: price,
       gasLimit: limit,
       web3HttpProviderUrl: httpProviderUrl,
       contracts,
-      privateKey,
-      platformId,
-      blockchainNetwork
-    } = config
-    this.platformId = platformId
-    this.blockchainNetwork = blockchainNetwork
+      privateKey
+    } = configuration
+    this._configuration = configuration
     this._transportProvider = transportProvider
     this.eth = new Eth({
       privateKey,
@@ -64,11 +63,11 @@ export class DAppFactory {
     rules: any
   }): Promise<DApp> {
     const { name, gameLogicFunction, contract, rules } = params
-
+    const { platformId, blockchainNetwork } = this._configuration
     const dappParams = {
       slug: name,
-      platformId: this.platformId,
-      blockchainNetwork: this.blockchainNetwork,
+      platformId,
+      blockchainNetwork,
       contract,
       rules,
       roomProvider: this._transportProvider,
