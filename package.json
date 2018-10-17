@@ -5,6 +5,7 @@
   "main": "./lib/index",
   "scripts": {
     "build": "npm-run-all typescript",
+    "build:ts": "npm-run-all typescript",
     "clean": "rimraf lib",
     "typescript": "tsc --build"
   },

@@ -23,7 +23,7 @@ import {
 } from "dc-ethereum-utils"
 import { Logger } from "dc-logging"
 
-import { config, ContractInfo } from "dc-configs"
+import { config, ContractInfo, BlockchainNetwork } from "dc-configs"
 
 import { GlobalGameLogicStore } from "./GlobalGameLogicStore"
 import { DApp } from "./DApp"
@@ -31,27 +31,31 @@ import { IMessagingProvider } from "dc-messaging"
 import { DAppInstance } from "./DAppInstance"
 
 export class DAppFactory {
-  private _eth: Eth
+  eth: Eth
+  platformId: string
+  blockchainNetwork: BlockchainNetwork
   private _transportProvider: IMessagingProvider
   constructor(transportProvider: IMessagingProvider) {
     const {
-      platformId,
       gasPrice: price,
       gasLimit: limit,
       web3HttpProviderUrl: httpProviderUrl,
       contracts,
       privateKey,
+      platformId,
       blockchainNetwork
     } = config
+    this.platformId = platformId
+    this.blockchainNetwork = blockchainNetwork
     this._transportProvider = transportProvider
-    this._eth = new Eth({
+    this.eth = new Eth({
       privateKey,
       httpProviderUrl,
       ERC20ContractInfo: contracts.ERC20,
       gasParams: { price, limit }
     })
-    const _global: any = global
-    _global.DCLib = new GlobalGameLogicStore()
+    const globalStore: any = global || window
+    globalStore.DCLib = new GlobalGameLogicStore()
   }
   async create(params: {
     name: string
@@ -60,18 +64,18 @@ export class DAppFactory {
     rules: any
   }): Promise<DApp> {
     const { name, gameLogicFunction, contract, rules } = params
-    const { platformId, blockchainNetwork } = config
+
     const dappParams = {
       slug: name,
-      platformId,
-      blockchainNetwork,
+      platformId: this.platformId,
+      blockchainNetwork: this.blockchainNetwork,
       contract,
       rules,
       roomProvider: this._transportProvider,
       gameLogicFunction,
-      Eth: this._eth
+      Eth: this.eth
     }
-    await this._eth.initAccount()
+    await this.eth.initAccount()
     const dapp = new DApp(dappParams)
     return dapp
   }
