@@ -74,16 +74,19 @@ export class DAppFactory {
     const dapp = new DApp(dappParams)
     return dapp
   }
+  
   async startClient(params: {
     name: string
     gameLogicFunction: GameLogicFunction
     contract: ContractInfo
     rules: any
-  }): Promise<DAppInstance> {
-    const dapp = await this.create(params)
-    const dappInstance = await dapp.startClient()
-    return dappInstance
+  // }): Promise<DAppInstance> {
+  }) {
+    // const dapp = await this.create(params)
+    // const dappInstance = await dapp.startClient()
+    // return dappInstance
   }
+
   async startDealer(params: {
     name: string
     gameLogicFunction: GameLogicFunction

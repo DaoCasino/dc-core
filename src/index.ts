@@ -1,5 +1,6 @@
 export * from './interfaces/index'
 export * from './PayChannelLogic'
+export * from './DAppFactory'
 export * from './DAppInstance'
 export * from './DAppPlayerInstance'
 export * from './DApp'
