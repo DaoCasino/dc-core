@@ -256,8 +256,8 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
           this.channelState.saveState(
             {
               _id: params.channelId,
-              _playerBalance: bet2dec(this.Balances._getBalance().player),
-              _bankrollerBalance: bet2dec(this.Balances._getBalance().bankroller),
+              _playerBalance: bet2dec(this.Balances.getBalances().balance.player),
+              _bankrollerBalance: bet2dec(this.Balances.getBalances().balance.bankroller),
               _totalBet: "0",
               _session: 0
             },
@@ -289,6 +289,7 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
     const sign = await this._params.Eth.signHash(toSign)
 
     try {
+      // Call gamelogic function on bankrollerside
       const dealerResult = await this._dealer.play({
         userBet,
         gameData,
@@ -300,6 +301,7 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
       // check random sign
       // this.openDisputeUI()
 
+      // Call gamelogic function on player side
       const profit = this._gameLogic.play(
         userBet,
         gameData,
@@ -312,7 +314,7 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
       }
 
       this.Balances._addTX(profit)
-      
+    
       return profit
     } catch (error) {
       log.error(error)

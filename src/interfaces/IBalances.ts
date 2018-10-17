@@ -1,4 +1,4 @@
 export interface IBalances {
-  getBalances: () => number
+  getBalances: () => any
   printLog: () => void
 }

@@ -48,9 +48,6 @@ export interface CallParams {
   sign: string
 }
 
-/* @TODO */
-// export interface PlayResult {}
-// export interface CallResult {}
 
 export interface ConsentResult {
   consentSignature: string,
@@ -85,7 +82,7 @@ export interface IDAppPlayerInstance {
   startClient(): Promise<any | Error>
   play(userBet: number, gameData: any ): Promise<{
     profit: number;
-  } | Error>
+  }>
   connect(connectData: ConnectParams): Promise<any | Error>
   disconnect()
   openChannel(
@@ -101,10 +98,11 @@ export interface IDAppPlayerInstance {
 export interface IDAppDealerInstance {
   on(event: string, func: (data: any) => void)
   startServer(): any
-  call(data: CallParams): Promise<{
-    callResult: any,
-    randomSignature: string
-  } | Error>
+  play(data: CallParams): Promise<{
+    profit: number,
+    randomSignature: string,
+    randoms: number[],
+  }>
   getOpenChannelData(
     data: ConnectParams,
     signature: string

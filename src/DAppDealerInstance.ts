@@ -23,7 +23,7 @@ import {
 
 import { Logger } from "dc-logging"
 import { config } from "dc-configs"
-import { PayChannelLogic } from "./PayChannelLogic"
+import { Balances } from "./Balances"
 import { ChannelState } from "./ChannelState"
 import { EventEmitter } from "events"
 
@@ -41,7 +41,7 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
   channelId: string
   channelState: ChannelState
   playerAddress: string
-  payChannelLogic: PayChannelLogic
+  Balances: Balances
   playerDepositWei: string
   bankrollerDeposit: number
   bankrollerDepositWei: string
@@ -50,18 +50,11 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
     super()
     this._params = params
     this._config = config
-    this._gameLogic = this._params.gameLogicFunction(this.payChannelLogic)
-    this.payChannelLogic = new PayChannelLogic()
+    this._gameLogic = this._params.gameLogicFunction(this.Balances)
+    this.Balances = new Balances()
     
     this.Rsa = new Rsa()
     log.debug('Dealer instance init')
-  }
-
-  getView() {
-    return {
-      ...this.payChannelLogic.getView(),
-      playerAddress: this.playerAddress
-    }
   }
 
   eventNames() {
@@ -176,7 +169,7 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
       this.channel = channel
 
       // Устанавливаем депозит игры
-      this.payChannelLogic._setDeposits(
+      this.Balances._setDeposits(
         channel.playerBalance,
         channel.bankrollerBalance
       )
@@ -189,8 +182,8 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
       this.channelState.saveState(
         {
           _id: this.channelId,
-          _playerBalance: this.payChannelLogic._getBalance().player,
-          _bankrollerBalance: this.payChannelLogic._getBalance().bankroller,
+          _playerBalance: dec2bet(this.Balances.getBalances().balance.player),
+          _bankrollerBalance: dec2bet(this.Balances.getBalances().balance.bankroller),
           _totalBet: "0",
           _session: 0
         },
@@ -209,6 +202,17 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
       return channel
     } else {
       throw new Error("channel not found")
+    }
+  }
+
+
+  async play({userBet, gameData, seed, nonce, sign}){
+    
+
+    return {
+      profit: 1,
+      randomSignature: '',
+      randoms: [1,2],
     }
   }
 
@@ -257,7 +261,7 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
       channel.player.toLowerCase() === this._params.userId.toLowerCase() &&
       channel.bankroller.toLowerCase() === this._params.Eth.getAccount().address.toLowerCase()
     ) {
-      this.payChannelLogic = null
+      this.Balances = null
       this.channelState = null
       this.emit("info", {
         event: "Close channel checked",
@@ -274,4 +278,22 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
       throw new Error("channel not found")
     }
   }
+
+
+
+
+
+
+  getView() {
+    const b = this.Balances.getBalances()
+
+    return {
+      deposit           : b.deposits.bankroller,
+      playerBalance     : b.balance.player,
+      bankrollerBalance : b.balance.bankroller,
+      profit            : b.profit.bankroller,
+      playerAddress     : this.playerAddress
+    }
+  }
+
 }
