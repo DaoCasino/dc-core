@@ -1,8 +1,10 @@
-import { IMessagingProvider } from 'dc-messaging'
-import { Eth } from 'dc-ethereum-utils'
-import Contract from 'web3/eth/contract'
-import { GameInfo } from './GameInfo'
-import { GameLogicFunction } from './index'
+import { IMessagingProvider } from "dc-messaging"
+import { Eth } from "dc-ethereum-utils"
+import Contract from "web3/eth/contract"
+import { GameInfo } from "./GameInfo"
+import { GameLogicFunction } from "./index"
+
+export type UserId = string
 
 export interface DAppInstanceParams {
   userId: UserId
@@ -18,24 +20,16 @@ export interface DAppInstanceParams {
   Eth: Eth
 }
 
-export type UserId = string
-
-export interface OpenChannelParams {
-  playerAddress: string
+export interface ConnectParams {
   playerDeposit: number
   gameData: any
 }
-export interface GetChannelDataParams extends OpenChannelParams {
+export interface GetChannelDataParams extends ConnectParams {
+  playerAddress: string
   channelId: string
 }
-export interface CallParams {
-  userBet: number
-  gameData: number[]
-  seed: string
-  nonce: number
-  sign: string
-}
-export interface OpenChannelData {
+
+export interface OpenChannelParams {
   channelId: any // TODO add type
   playerAddress: string
   bankrollerAddress: string
@@ -46,6 +40,28 @@ export interface OpenChannelData {
   n: string
   e: string
 }
+export interface CallParams {
+  userBet: number
+  gameData: number[]
+  seed: string
+  nonce: number
+  sign: string
+}
+
+export interface ConsentResult {
+  consentSignature: string
+  bankrollerAddress: string
+}
+
+export interface CloseChannelParams {
+  _id: string
+  _playerBalance: number
+  _bankrollerBalance: number
+  _totalBet: number
+  _session: number
+  _consent: boolean
+}
+
 export interface SignedResponse<TResponse> {
   response: TResponse
   signature: string
@@ -60,10 +76,38 @@ export interface DAppInstanceView {
 }
 export interface IDAppInstance {
   on(event: string, func: (data: any) => void)
-  getOpenChannelData: (
-    data: OpenChannelParams,
+  start(): Promise<void> | void
+}
+
+export interface IDAppPlayerInstance extends IDAppInstance {
+  connect(connectData: ConnectParams): Promise<any>
+  disconnect()
+  openChannel(
+    openChannelData: OpenChannelParams,
     signature: string
-  ) => Promise<SignedResponse<OpenChannelData>>
+  ): Promise<any>
+  closeChannel(
+    closeParams: CloseChannelParams,
+    paramsSignature: string
+  ): Promise<any>
+}
+
+export interface IDAppDealerInstance extends IDAppInstance {
+  getOpenChannelData(
+    data: ConnectParams,
+    signature: string
+  ): Promise<SignedResponse<OpenChannelParams>>
+  checkOpenChannel(): Promise<any>
+  consentCloseChannel(stateSignature: string): ConsentResult
+  checkCloseChannel(): Promise<any>
+}
+
+export interface IDAppInstanceOld {
+  on(event: string, func: (data: any) => void)
+  getOpenChannelData: (
+    data: ConnectParams,
+    signature: string
+  ) => Promise<SignedResponse<OpenChannelParams>>
   checkOpenChannel: () => Promise<any>
   updateState: (data: { state: any }) => { status: string }
   closeChannel(): Promise<any>
@@ -73,9 +117,9 @@ export interface IDAppInstance {
   call: (
     data: CallParams
   ) => Promise<{
-    signature: string;
-    randomHash: string;
-    gameLogicCallResult: any;
+    signature: string
+    randomHash: string
+    gameLogicCallResult: any
   }>
   reconnect: (data: any) => void
   // closeTimeout(); WTF???

@@ -1,8 +1,8 @@
 import {
-  IDAppInstance,
-  OpenChannelParams,
+  IDAppInstanceOld,
+  ConnectParams,
   SignedResponse,
-  OpenChannelData,
+  OpenChannelParams,
   DAppInstanceParams,
   IRsa,
   Rsa,
@@ -29,8 +29,8 @@ const MINIMUM_ETH = 0.001
 const GAS_LIMIT = 4600000
 const GAS_PRICE = 40 * 1000000000
 
-export class DAppInstance extends EventEmitter implements IDAppInstance {
-  private _peer: IDAppInstance
+export class DAppInstanceOld extends EventEmitter implements IDAppInstanceOld {
+  private _peer: IDAppInstanceOld
   private _gameLogic: IGameLogic
   _params: DAppInstanceParams
   Rsa: IRsa
@@ -83,11 +83,11 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
   async startClient() {
     if (!this._peer) {
       this._peer = await this._params.roomProvider.getRemoteInterface<
-        IDAppInstance
+        IDAppInstanceOld
       >(this._params.roomAddress)
     }
   }
-  async openChannel(params: OpenChannelParams) {
+  async openChannel(params: ConnectParams) {
     const { playerDeposit, gameData } = params
 
     logger.info(`🔐 Open channel with deposit: ${playerDeposit}`)
@@ -174,9 +174,9 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
       bankrollerAddress
     )
     if (bankrollerAllowance < dec2bet(bankrollerDeposit)) {
-      throw new Error(
-        `Bankroller allowance too low ${bankrollerAllowance} for deposit ${bankrollerDeposit}`
-      )
+      throw new Error(`
+        Bankroller allowance too low ${bankrollerAllowance} for deposit ${bankrollerDeposit}
+      `)
     }
 
     this.emit("info", {
@@ -289,7 +289,7 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
   async getOpenChannelData(
     params: GetChannelDataParams,
     paramsSignature: string
-  ): Promise<SignedResponse<OpenChannelData>> {
+  ): Promise<SignedResponse<OpenChannelParams>> {
     // Create RSA keys for user
     const { channelId, playerAddress, playerDeposit, gameData } = params
 
@@ -623,8 +623,6 @@ export class DAppInstance extends EventEmitter implements IDAppInstance {
       { t: "uint", v: lastState._session },
       { t: "bool", v: true }
     ]
-
-    logger.debug(`ssssss`, lastState)
 
     const recoverOpenkey = this._params.Eth.recover(consentData, signLastState)
     if (recoverOpenkey.toLowerCase() !== this.playerAddress.toLowerCase()) {
