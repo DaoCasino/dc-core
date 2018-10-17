@@ -50,7 +50,7 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
     super()
     this._params = params
     this._config = config
-    this._gameLogic = this._params.gameLogicFunction(this.Balances)
+    this._gameLogic = this._params.gameLogicFunction()
     this.Balances = new Balances()
     
     this.Rsa = new Rsa()

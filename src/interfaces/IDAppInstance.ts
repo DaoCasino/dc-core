@@ -2,7 +2,7 @@ import { IMessagingProvider } from 'dc-messaging'
 import { Eth } from 'dc-ethereum-utils'
 import Contract from 'web3/eth/contract'
 import { GameInfo } from './GameInfo'
-import { GameLogicFunction } from './index'
+import { IGameLogic } from './GameLogic'
 
 export type UserId = string
 
@@ -13,7 +13,7 @@ export interface DAppInstanceParams {
   payChannelContract: Contract
   payChannelContractAddress: string
   roomAddress: string
-  gameLogicFunction: GameLogicFunction
+  gameLogicFunction: ()=>IGameLogic
   roomProvider: IMessagingProvider
   onFinish: (userId: UserId) => void
   gameInfo: GameInfo
@@ -80,9 +80,7 @@ export interface DAppInstanceView {
 export interface IDAppPlayerInstance {
   on(event: string, func: (data: any) => void)
   startClient(): Promise<any | Error>
-  play(userBet: number, gameData: any ): Promise<{
-    profit: number;
-  }>
+  play(data:{userBet: number, gameData: any} ): Promise<number>
   connect(connectData: ConnectParams): Promise<any | Error>
   disconnect()
   openChannel(

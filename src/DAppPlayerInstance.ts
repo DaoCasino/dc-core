@@ -48,7 +48,7 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
     this._nonce = 0
     this._params = params
     this._config = config
-    this._gameLogic = this._params.gameLogicFunction(this.Balances)
+    this._gameLogic = this._params.gameLogicFunction()
     this.Balances = new Balances()
 
     this.Rsa = new Rsa()
@@ -273,11 +273,10 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
   }
 
   // async play(params: { userBet: number; gameData: any, rnd:number[][] }) {
-  async play(params: { userBet: number; gameData: any }) {
+  async play( params: { userBet: number, gameData: any } ) {
     this._nonce++
-
-    const { userBet, gameData } = params
-
+    const {userBet, gameData} = params
+    
     const seed = makeSeed()
     const toSign: SolidityTypeValue[] = [
       { t: "bytes32", v: this.channelId },
@@ -316,6 +315,7 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
       this.Balances._addTX(profit)
     
       return profit
+
     } catch (error) {
       log.error(error)
       throw error

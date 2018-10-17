@@ -52,7 +52,7 @@ export class DAppFactory {
   }
   async create(params: {
     name: string
-    gameLogicFunction: IGameLogic
+    gameLogicFunction: ()=>IGameLogic
     contract: ContractInfo
     rules: any
   }): Promise<DApp> {
@@ -75,7 +75,7 @@ export class DAppFactory {
   
   async startClient(params: {
     name: string
-    gameLogicFunction: IGameLogic
+    gameLogicFunction: ()=>IGameLogic
     contract: ContractInfo
     rules: any
   // }): Promise<DAppInstance> {
@@ -87,7 +87,7 @@ export class DAppFactory {
 
   async startDealer(params: {
     name: string
-    gameLogicFunction: IGameLogic
+    gameLogicFunction: ()=>IGameLogic
     contract: ContractInfo
     rules: any
   }) {
