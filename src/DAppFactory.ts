@@ -2,7 +2,6 @@ import {
   IDAppInstance,
   OpenChannelParams,
   SignedResponse,
-  OpenChannelData,
   DAppInstanceParams,
   IRsa,
   Rsa,

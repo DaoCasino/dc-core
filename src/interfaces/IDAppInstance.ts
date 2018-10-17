@@ -4,6 +4,8 @@ import Contract from 'web3/eth/contract'
 import { GameInfo } from './GameInfo'
 import { GameLogicFunction } from './index'
 
+export type UserId = string
+
 export interface DAppInstanceParams {
   userId: UserId
   num: number
@@ -18,24 +20,16 @@ export interface DAppInstanceParams {
   Eth: Eth
 }
 
-export type UserId = string
-
-export interface OpenChannelParams {
-  playerAddress: string
+export interface ConnectParams {
   playerDeposit: number
   gameData: any
 }
-export interface GetChannelDataParams extends OpenChannelParams {
+export interface GetChannelDataParams extends ConnectParams {
+  playerAddress: string
   channelId: string
 }
-export interface CallParams {
-  userBet: number
-  gameData: number[]
-  seed: string
-  nonce: number
-  sign: string
-}
-export interface OpenChannelData {
+
+export interface OpenChannelParams {
   channelId: any // TODO add type
   playerAddress: string
   bankrollerAddress: string
@@ -46,6 +40,28 @@ export interface OpenChannelData {
   n: string
   e: string
 }
+export interface CallParams {
+  userBet: number
+  gameData: number[]
+  seed: string
+  nonce: number
+  sign: string
+}
+
+export interface ConsentResult {
+  consentSignature: string,
+  bankrollerAddress: string
+}
+
+export interface CloseChannelParams {
+  _id: string,
+  _playerBalance: number,
+  _bankrollerBalance: number,
+  _totalBet: number,
+  _session: number,
+  _consent: boolean
+}
+
 export interface SignedResponse<TResponse> {
   response: TResponse
   signature: string
@@ -58,12 +74,49 @@ export interface DAppInstanceView {
   profit: number
   playerAddress: string
 }
+
+export interface IDAppPlayerInstance {
+  on(event: string, func: (data: any) => void)
+  startClient(): Promise<any | Error>
+  // call(data: CallParams): Promise<{
+  //   signature: string;
+  //   randomHash: string;
+  //   callResult: any;
+  // } | Error>
+  connect(connectData: ConnectParams): Promise<any | Error>
+  disconnect()
+  openChannel(
+    openChannelData: OpenChannelParams,
+    signature: string
+  ): Promise<any | Error>
+  closeChannel(
+    closeParams: CloseChannelParams,
+    paramsSignature: string
+  ): Promise<any | Error>
+}
+
+export interface IDAppDealerInstance {
+  on(event: string, func: (data: any) => void)
+  startServer(): any
+  // call(data: CallParams): Promise<{
+  //   callResult: any,
+  //   randomSignature: string
+  // } | Error>
+  getOpenChannelData(
+    data: ConnectParams,
+    signature: string
+  ): Promise<SignedResponse<OpenChannelParams>>
+  checkOpenChannel(): Promise<any | Error>
+  consentCloseChannel(stateSignature: string): ConsentResult
+  checkCloseChannel(): Promise<any | Error>
+}
+
 export interface IDAppInstance {
   on(event: string, func: (data: any) => void)
   getOpenChannelData: (
-    data: OpenChannelParams,
+    data: ConnectParams,
     signature: string
-  ) => Promise<SignedResponse<OpenChannelData>>
+  ) => Promise<SignedResponse<OpenChannelParams>>
   checkOpenChannel: () => Promise<any>
   updateState: (data: { state: any }) => { status: string }
   closeChannel(): Promise<any>
