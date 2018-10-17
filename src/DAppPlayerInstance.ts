@@ -23,7 +23,7 @@ import {
 
 import { Logger } from "dc-logging"
 import { config } from "dc-configs"
-import { PayChannelLogic } from "./PayChannelLogic"
+import { Balances } from "./Balances"
 import { ChannelState } from "./ChannelState"
 import { EventEmitter } from "events"
 
@@ -35,19 +35,21 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
   private _config: any
   private _params: DAppInstanceParams
   private _gameLogic : IGameLogic
+  private _nonce : number
   
   Rsa: IRsa
   channelId: string
   channelState: ChannelState
   playerAddress: string
-  payChannelLogic: PayChannelLogic
+  Balances: Balances
   
   constructor(params: DAppInstanceParams) {
     super()
+    this._nonce = 0
     this._params = params
     this._config = config
-    this._gameLogic = this._params.gameLogicFunction(this.payChannelLogic)
-    this.payChannelLogic = new PayChannelLogic()
+    this._gameLogic = this._params.gameLogicFunction(this.Balances)
+    this.Balances = new Balances()
 
     this.Rsa = new Rsa()
     log.debug('Peer instance init')
@@ -244,7 +246,7 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
         const checkChannel = await this._dealer.checkOpenChannel()
         if (checkChannel.state) {
           /** Set start deposit with game */
-          this.payChannelLogic._setDeposits(
+          this.Balances._setDeposits(
             dec2bet(params.playerDepositWei),
             dec2bet(params.bankrollerDepositWei)  
           )
@@ -254,8 +256,8 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
           this.channelState.saveState(
             {
               _id: params.channelId,
-              _playerBalance: bet2dec(this.payChannelLogic._getBalance().player),
-              _bankrollerBalance: bet2dec(this.payChannelLogic._getBalance().bankroller),
+              _playerBalance: bet2dec(this.Balances._getBalance().player),
+              _bankrollerBalance: bet2dec(this.Balances._getBalance().bankroller),
               _totalBet: "0",
               _session: 0
             },
@@ -266,6 +268,54 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
         }
       }
     } catch (error) {
+      throw error
+    }
+  }
+
+  // async play(params: { userBet: number; gameData: any, rnd:number[][] }) {
+  async play(params: { userBet: number; gameData: any }) {
+    this._nonce++
+
+    const { userBet, gameData } = params
+
+    const seed = makeSeed()
+    const toSign: SolidityTypeValue[] = [
+      { t: "bytes32", v: this.channelId },
+      { t: "uint", v: this._nonce },
+      { t: "uint", v: bet2dec(userBet) },
+      { t: "uint", v: gameData },
+      { t: "bytes32", v: seed }
+    ]
+    const sign = await this._params.Eth.signHash(toSign)
+
+    try {
+      const dealerResult = await this._dealer.play({
+        userBet,
+        gameData,
+        seed,
+        nonce: this._nonce,
+        sign
+      })
+
+      // check random sign
+      // this.openDisputeUI()
+
+      const profit = this._gameLogic.play(
+        userBet,
+        gameData,
+        dealerResult.randoms
+      )
+
+      // check results
+      if (profit !== dealerResult.profit) {
+        this.openDisputeUI()
+      }
+
+      this.Balances._addTX(profit)
+      
+      return profit
+    } catch (error) {
+      log.error(error)
       throw error
     }
   }
@@ -337,7 +387,7 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
       if (closeChannelTX.status) {
         const checkChannel = await this._dealer.checkCloseChannel()
         if (checkChannel.state === '2') {
-          this.payChannelLogic = null
+          this.Balances = null
           this.channelState = null
           this.emit("info", {event: 'Channel closed'})
           return { ...checkChannel }
@@ -347,4 +397,16 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
       throw error
     }
   }
+
+  openDisputeUI(){
+    if (confirm('Open dispute?')) {
+
+    }
+    if (confirm('Close channel with last state?')) {
+    }
+
+    if (confirm('Do nothing?')) {
+    }
+  }
+
 }

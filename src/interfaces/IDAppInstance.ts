@@ -48,6 +48,10 @@ export interface CallParams {
   sign: string
 }
 
+/* @TODO */
+// export interface PlayResult {}
+// export interface CallResult {}
+
 export interface ConsentResult {
   consentSignature: string,
   bankrollerAddress: string
@@ -75,14 +79,13 @@ export interface DAppInstanceView {
   playerAddress: string
 }
 
+
 export interface IDAppPlayerInstance {
   on(event: string, func: (data: any) => void)
   startClient(): Promise<any | Error>
-  // call(data: CallParams): Promise<{
-  //   signature: string;
-  //   randomHash: string;
-  //   callResult: any;
-  // } | Error>
+  play(userBet: number, gameData: any ): Promise<{
+    profit: number;
+  } | Error>
   connect(connectData: ConnectParams): Promise<any | Error>
   disconnect()
   openChannel(
@@ -98,10 +101,10 @@ export interface IDAppPlayerInstance {
 export interface IDAppDealerInstance {
   on(event: string, func: (data: any) => void)
   startServer(): any
-  // call(data: CallParams): Promise<{
-  //   callResult: any,
-  //   randomSignature: string
-  // } | Error>
+  call(data: CallParams): Promise<{
+    callResult: any,
+    randomSignature: string
+  } | Error>
   getOpenChannelData(
     data: ConnectParams,
     signature: string
@@ -111,26 +114,3 @@ export interface IDAppDealerInstance {
   checkCloseChannel(): Promise<any | Error>
 }
 
-export interface IDAppInstance {
-  on(event: string, func: (data: any) => void)
-  getOpenChannelData: (
-    data: ConnectParams,
-    signature: string
-  ) => Promise<SignedResponse<OpenChannelParams>>
-  checkOpenChannel: () => Promise<any>
-  updateState: (data: { state: any }) => { status: string }
-  closeChannel(): Promise<any>
-  consentCloseChannel(signLastState: string): any
-  // closeByConsent: (data: any) => { sign: string };
-  checkCloseChannel: (data: any) => void
-  call: (
-    data: CallParams
-  ) => Promise<{
-    signature: string;
-    randomHash: string;
-    gameLogicCallResult: any;
-  }>
-  reconnect: (data: any) => void
-  // closeTimeout(); WTF???
-  disconnect: (data: any) => void
-}

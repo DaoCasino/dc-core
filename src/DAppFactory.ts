@@ -27,7 +27,7 @@ import { config, ContractInfo } from "dc-configs"
 import { GlobalGameLogicStore } from "./GlobalGameLogicStore"
 import { DApp } from "./DApp"
 import { IMessagingProvider } from "dc-messaging"
-import { DAppInstance } from "./DAppInstance"
+
 
 export class DAppFactory {
   private _eth: Eth

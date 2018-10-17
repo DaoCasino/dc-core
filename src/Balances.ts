@@ -1,12 +1,12 @@
 import * as Utils from 'dc-ethereum-utils'
 import { Logger } from 'dc-logging'
-import { IPayChannelLogic } from './interfaces/index'
+import { IBalances } from './interfaces/index'
 /** max items in history */
 const MAX_HISTORY_ITEMS = 100
 
-const logger = new Logger('PayChannelLogic')
+const log = new Logger('Balances')
 
-export class PayChannelLogic implements IPayChannelLogic {
+export class Balances implements IBalances {
   deposit: {
     player: number | null
     bankroller: number | null
@@ -32,7 +32,7 @@ export class PayChannelLogic implements IPayChannelLogic {
 
   _setDeposits(player, bankroller) {
     if (this.deposit.player !== null) {
-      logger.warn('Deposit allready set')
+      log.warn('Deposit allready set')
     }
 
     this.deposit.player = +player
@@ -43,36 +43,9 @@ export class PayChannelLogic implements IPayChannelLogic {
     return this.balance
   }
 
-  _getBalance() {
-    return this.balance
-  }
 
-  _getProfit() {
-    return this._profit
-  }
-
-  getDeposit() {
-    return Utils.dec2bet(this.deposit.player)
-  }
-
-  getBalance() {
-    return Utils.dec2bet(this.balance.player)
-  }
-
-  getBankrollBalance() {
-    return Utils.dec2bet(this.balance.bankroller)
-  }
-
-  getProfit() {
-    return Utils.dec2bet(this._profit)
-  }
-
-  updateBalance(p) {
-    return this.addTX(p)
-  }
-
-  addTX(profit: number) {
-    this._profit += profit * 1
+  _addTX(profit: number) {
+    this._profit += Utils.bet2dec(profit)
     this.balance.player = this.deposit.player + this._profit
     this.balance.bankroller = this.deposit.bankroller - this._profit
 
@@ -86,32 +59,37 @@ export class PayChannelLogic implements IPayChannelLogic {
 
     return this._profit
   }
-  getView() {
+
+  getBalances() {
     return {
-      deposit: this.getDeposit(),
-      playerBalance: this.getBalance(),
-      bankrollerBalance: this.getBankrollBalance(),
-      profit: this.getProfit(),
+      deposits:{
+        player: Utils.bet2dec(this.deposit.player),
+        bankroller: Utils.bet2dec(this.deposit.player)
+      },
+      balance:{
+        player: Utils.bet2dec(this.balance.player),
+        bankroller: Utils.bet2dec(this.balance.player)
+      },
+      profit:{
+        player: Utils.bet2dec(this._profit),
+        bankroller: Utils.bet2dec(-this._profit)
+      }
     }
   }
+
   printLog() {
-    logger.debug('Paychannel state:')
-    logger.debug({
-      Deposit: this.getDeposit(),
-      Player_balance: this.getBalance(),
-      Bankroll_balance: this.getBankrollBalance(),
-      Profit: this.getProfit(),
-    })
-    logger.debug(
+    log.debug('Paychannel state:')
+    log.debug(this.getBalances())
+    log.debug(
       'TX History, last ' + MAX_HISTORY_ITEMS + ' items ' + this._history.length
     )
-    logger.debug(this._history)
+    log.debug(this._history)
 
     return this._history
   }
 
   reset() {
-    logger.debug('PayChannel::reset, set deposit balance profit to 0')
+    log.debug('PayChannel::reset, set deposit balance profit to 0')
     this.deposit.player = null
     this.deposit.bankroller = null
     this.balance.player = 0
