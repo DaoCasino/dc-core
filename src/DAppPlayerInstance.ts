@@ -2,7 +2,6 @@ import {
   Rsa,
   IRsa,
   IGameLogic,
-  CallParams,
   ConnectParams,
   SignedResponse,
   OpenChannelParams,
@@ -35,7 +34,7 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
   private _config: any
   private _params: DAppInstanceParams
   private _gameLogic : IGameLogic
-  private _nonce : number
+  private _session : number
   
   Rsa: IRsa
   channelId: string
@@ -45,7 +44,7 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
   
   constructor(params: DAppInstanceParams) {
     super()
-    this._nonce = 0
+    this._session = 0
     this._params = params
     this._config = config
     this._gameLogic = this._params.gameLogicFunction()
@@ -274,13 +273,13 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
 
   // async play(params: { userBet: number; gameData: any, rnd:number[][] }) {
   async play( params: { userBet: number, gameData: any } ) {
-    this._nonce++
+    this._session++
     const {userBet, gameData} = params
 
     const seed = makeSeed()
     const toSign: SolidityTypeValue[] = [
       { t: "bytes32", v: this.channelId },
-      { t: "uint", v: this._nonce },
+      { t: "uint", v: this._session },
       { t: "uint", v: bet2dec(userBet) },
       { t: "uint", v: gameData },
       { t: "bytes32", v: seed }
@@ -289,15 +288,15 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
 
     try {
       // Call gamelogic function on bankrollerside
-      const dealerResult = await this._dealer.play({
+      const dealerResult = await this._dealer.play(
         userBet,
         gameData,
         seed,
-        nonce: this._nonce,
+        this._session,
         sign
-      })
+      )
 
-      // check random sign
+      // TODO: check random sign
       // this.openDisputeUI()
 
       // Call gamelogic function on player side
@@ -307,7 +306,7 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
         dealerResult.randoms
       )
 
-      // check results
+      // TODO: check results
       if (profit !== dealerResult.profit) {
         this.openDisputeUI()
       }

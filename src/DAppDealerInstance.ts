@@ -2,7 +2,6 @@ import {
   Rsa,
   IRsa,
   IGameLogic,
-  CallParams,
   ConnectParams,
   ConsentResult,
   SignedResponse,
@@ -206,13 +205,12 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
     }
   }
 
-
-  async play({userBet, gameData, seed, nonce, sign}){
+  async play(userBet:number, gameData:any, seed:string, session:number, sign:string){
     const lastState = this.channelState.getState( this._params.Eth.getAccount().address )
-    const curNonce = 1 + lastState._session
-    // check nonce/session
-    if (nonce !== curNonce) {
-      throw new Error('incorrect nonce/session user nonce:'+nonce+'!='+curNonce) 
+    const curSession = 1 + lastState._session
+    // check session
+    if (session !== curSession) {
+      throw new Error('incorrect session user:'+session+'!='+curSession) 
     }
 
     // Проверяем нет ли неподписанных юзером предыдущих состояний
@@ -228,7 +226,7 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
    // проверка подписи
    const toVerifyHash = [
      {t: 'bytes32', v: lastState._id },
-     {t: 'uint',    v: curNonce      },
+     {t: 'uint',    v: curSession      },
      {t: 'uint',    v: '' + userBet  },
      {t: 'uint',    v: gameData      },
      {t: 'bytes32', v: seed          }
@@ -242,7 +240,7 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
     // Подписываем/генерируем рандом
     const rndHashArgs = [
       {t: 'bytes32', v: lastState.channel_id },
-      {t: 'uint',    v: curNonce             },
+      {t: 'uint',    v: curSession             },
       {t: 'uint',    v: '' + userBet         },
       {t: 'uint',    v: gameData             },
       {t: 'bytes32', v: seed                 }
@@ -258,9 +256,6 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
     // Меняем баланс в канале
     this.Balances._addTX(profit)
     this.Balances._addTotalBet(userBet)
-    
-
-    
 
     // Сохраняем подписанный нами последний стейт канала
     this.channelState.saveState({
@@ -268,7 +263,7 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
       '_playerBalance'     : '' + this.Balances.getBalances().balance.player,
       '_bankrollerBalance' : '' + this.Balances.getBalances().balance.bankroller,
       '_totalBet'          : '' + this.Balances._getTotalBet(),
-      '_session'           : curNonce
+      '_session'           : curSession
     }, this._params.Eth.getAccount().address.toLowerCase())
 
     return { 

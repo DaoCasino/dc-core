@@ -30,7 +30,7 @@ export interface GetChannelDataParams extends ConnectParams {
 }
 
 export interface OpenChannelParams {
-  channelId: any // TODO add type
+  channelId: string
   playerAddress: string
   bankrollerAddress: string
   playerDepositWei: string
@@ -40,13 +40,7 @@ export interface OpenChannelParams {
   n: string
   e: string
 }
-export interface CallParams {
-  userBet: number
-  gameData: number[]
-  seed: string
-  nonce: number
-  sign: string
-}
+
 
 
 export interface ConsentResult {
@@ -93,13 +87,15 @@ export interface IDAppPlayerInstance {
   ): Promise<any | Error>
 }
 
+
 export interface IDAppDealerInstance {
   on(event: string, func: (data: any) => void)
   startServer(): any
-  play(data: CallParams): Promise<{
+  play(userBet:number, gameData:any, seed:string, session:number, sign:string): Promise<{
     profit: number,
-    randomSignature: string,
     randoms: number[],
+    randomSignature: string | Buffer,
+    state: any
   }>
   getOpenChannelData(
     data: ConnectParams,

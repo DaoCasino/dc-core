@@ -4,7 +4,6 @@ import {
   DAppInstanceParams,
   IRsa,
   Rsa,
-  CallParams,
   IGameLogic,
   GetChannelDataParams
 } from "./interfaces/index"
