@@ -4,8 +4,8 @@
   "description": "DAO.Casino core library",
   "main": "./lib/index",
   "scripts": {
-    "build": "npm-run-all typescript",
-    "build:ts": "npm-run-all typescript",
+    "build:ts": "yarn typescript",
+    "build": "yarn typescript",
     "clean": "rimraf lib",
     "typescript": "tsc --build"
   },
