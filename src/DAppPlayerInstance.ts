@@ -291,9 +291,9 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
       )
 
       // @TODO: check random sign
-      // if (!this.pRsa.verify(rndHash, dealerResult.randomSignature, 'utf8', 'hex')) {
-      //   this.openDisputeUI()
-      // }
+      if (!this.pRsa.verify(rndHash, dealerResult.randomSignature, 'utf8', 'hex')) {
+        this.openDisputeUI()
+      }
 
 
       // Проверяем что рандом сделан из этой подписи
