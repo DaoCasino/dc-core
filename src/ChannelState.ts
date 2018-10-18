@@ -66,13 +66,13 @@ export class ChannelState {
 
 
     this.states[stateHash] = (!this.states[stateHash]) && { confirmed: false }
-    this.states[stateHash].bankroller = {
+    this.states[stateHash][address] = {
       ...stateData,
       _sign: stateSign,
     }
 
     this.waitStates[stateHash] = stateData._session
-    return true
+    return this.states[stateHash][address]
   }
 
   addPlayerSigned(stateData) {
@@ -90,7 +90,7 @@ export class ChannelState {
     ]
 
     const playerStateHash = sha3(...playerStateData)
-    const state = this.getState(playerStateHash)
+    const state = this.getState(this.playerOpenkey, playerStateHash)
     if (!state || !state.bankroller) {
       logger.error('State with hash ' + playerStateHash + ' not found')
       return false
@@ -143,17 +143,8 @@ export class ChannelState {
     return Object.keys(this.waitStates).length > 0
   }
 
-  get(hash) {
-    return this.getState(hash)
-  }
-
   getPlayerSigned(hash?) {
     if (!hash) hash = Object.keys(this.states).splice(-1)
-    return this.getState(hash).player
-  }
-
-  getBankrollerSigned(hash?) {
-    if (!hash) hash = Object.keys(this.states).splice(-1)
-    return this.getState(hash).bankroller
+    return this.getState(this.playerOpenkey, hash)
   }
 }

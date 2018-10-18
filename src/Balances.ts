@@ -53,7 +53,7 @@ export class Balances implements IBalances {
   }
 
   _addTX(profit: number) {
-    this._profit += Utils.bet2dec(profit)
+    this._profit += +Utils.dec2bet(profit)
     this.balance.player = this.deposit.player + this._profit
     this.balance.bankroller = this.deposit.bankroller - this._profit
 

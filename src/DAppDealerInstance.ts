@@ -27,7 +27,7 @@ import { Balances } from "./Balances"
 import { ChannelState } from "./ChannelState"
 import { EventEmitter } from "events"
 
-const log = new Logger("PeerInstance")
+const log = new Logger("DealerInstance")
 
 export default class DAppDealerInstance extends EventEmitter implements IDAppDealerInstance {
   private _peer: IDAppPlayerInstance
@@ -206,7 +206,9 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
   }
 
   async play(userBet:number, gameData:any, seed:string, session:number, sign:string){
+    const userBetWei = bet2dec(userBet)
     const lastState = this.channelState.getState( this._params.Eth.getAccount().address )
+
     const curSession = 1 + lastState._session
     // check session
     if (session !== curSession) {
@@ -214,24 +216,25 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
     }
 
     // Проверяем нет ли неподписанных юзером предыдущих состояний
-    if (this.channelState.hasUnconfirmed()) {
+    if (lastState._session > 0 && this.channelState.hasUnconfirmed()) {
       throw new Error('Player ' + this.playerAddress + ' not confirm previous channel state') 
     }
 
     // Проверяем что юзера достаточно бетов для этой ставки
-   if (lastState._playerBalance < userBet ) {
+   if (lastState._playerBalance < 1*userBetWei ) {
      throw new Error(`Player ' + this.playerAddress + ' not enougth money for this bet, balance ${lastState._playerBalance} < ${userBet}`)
    }
 
    // проверка подписи
-   const toVerifyHash = [
+   const toVerifyHash: SolidityTypeValue[] = [
      {t: 'bytes32', v: lastState._id },
      {t: 'uint',    v: curSession      },
-     {t: 'uint',    v: '' + userBet  },
+     {t: 'uint',    v: '' + userBetWei  },
      {t: 'uint',    v: gameData      },
      {t: 'bytes32', v: seed          }
    ]
-   
+
+  
    const recoverOpenkey = this._params.Eth.recover(sha3(...toVerifyHash), sign)
    if (recoverOpenkey.toLowerCase() !== this.playerAddress.toLowerCase()) {
      throw new Error("Invalid signature")
@@ -239,12 +242,13 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
 
     // Подписываем/генерируем рандом
     const rndHashArgs = [
-      {t: 'bytes32', v: lastState.channel_id },
+      {t: 'bytes32', v: lastState._id },
       {t: 'uint',    v: curSession             },
-      {t: 'uint',    v: '' + userBet         },
+      {t: 'uint',    v: '' + userBetWei         },
       {t: 'uint',    v: gameData             },
       {t: 'bytes32', v: seed                 }
     ]
+
     const rndHash = sha3(...rndHashArgs)
     const rndSign = this.Rsa.sign( rndHash )
 
@@ -254,22 +258,21 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
     const profit = this._gameLogic.play(userBet, gameData, randoms)
 
     // Меняем баланс в канале
-    this.Balances._addTX(profit)
-    this.Balances._addTotalBet(userBet)
+    this.Balances._addTX(1*userBetWei)
+    this.Balances._addTotalBet(1*userBetWei)
 
     // Сохраняем подписанный нами последний стейт канала
-    this.channelState.saveState({
+    const state = this.channelState.saveState({
       '_id'                : lastState._id,
       '_playerBalance'     : '' + this.Balances.getBalances().balance.player,
       '_bankrollerBalance' : '' + this.Balances.getBalances().balance.bankroller,
       '_totalBet'          : '' + this.Balances._getTotalBet(),
       '_session'           : curSession
-    }, this._params.Eth.getAccount().address.toLowerCase())
+    }, this._params.Eth.getAccount().address )
 
     return { 
-      profit, randoms, 
+      state, profit, randoms, 
       randomSignature : rndSign, 
-      state : this.channelState.getBankrollerSigned() 
     }
   }
 

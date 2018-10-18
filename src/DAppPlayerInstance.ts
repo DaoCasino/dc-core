@@ -273,18 +273,20 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
 
   // async play(params: { userBet: number; gameData: any, rnd:number[][] }) {
   async play( params: { userBet: number, gameData: any } ) {
-    this._session++
     const {userBet, gameData} = params
+    const userBetWei = bet2dec(userBet)
+    this._session++
 
     const seed = makeSeed()
     const toSign: SolidityTypeValue[] = [
       { t: "bytes32", v: this.channelId },
       { t: "uint", v: this._session },
-      { t: "uint", v: bet2dec(userBet) },
+      { t: "uint", v: userBetWei },
       { t: "uint", v: gameData },
       { t: "bytes32", v: seed }
     ]
-    const sign = await this._params.Eth.signHash(toSign)
+    const sign = await this._params.Eth.signHash(sha3(...toSign))
+
 
     try {
       // Call gamelogic function on bankrollerside
@@ -296,6 +298,8 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
         sign
       )
 
+      console.log('dealerResult')
+      console.table(dealerResult)
       // TODO: check random sign
       // this.openDisputeUI()
 
