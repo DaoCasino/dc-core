@@ -3,6 +3,8 @@ import {
   OpenChannelParams,
   SignedResponse,
   DAppInstanceParams,
+  IDAppPlayerInstance,
+  IDAppDealerInstance,
   IRsa,
   Rsa,
   CallParams,
@@ -27,7 +29,6 @@ import { config, ContractInfo } from "dc-configs"
 import { GlobalGameLogicStore } from "./GlobalGameLogicStore"
 import { DApp } from "./DApp"
 import { IMessagingProvider } from "dc-messaging"
-import { DAppInstance } from "./DAppInstance"
 
 export class DAppFactory {
   private _eth: Eth
@@ -52,6 +53,7 @@ export class DAppFactory {
     const _global: any = global
     _global.DCLib = new GlobalGameLogicStore()
   }
+
   async create(params: {
     name: string
     gameLogicFunction: GameLogicFunction
@@ -80,11 +82,10 @@ export class DAppFactory {
     gameLogicFunction: GameLogicFunction
     contract: ContractInfo
     rules: any
-  // }): Promise<DAppInstance> {
-  }) {
-    // const dapp = await this.create(params)
-    // const dappInstance = await dapp.startClient()
-    // return dappInstance
+  }): Promise<IDAppPlayerInstance> {
+    const dapp = await this.create(params)
+    const dappInstance = await dapp.startClient()
+    return dappInstance
   }
 
   async startDealer(params: {

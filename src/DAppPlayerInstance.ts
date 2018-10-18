@@ -14,7 +14,6 @@ import {
 } from "./interfaces/index"
 
 import {
-  sha3,
   dec2bet,
   bet2dec,
   makeSeed,
@@ -47,6 +46,7 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
     this._params = params
     this._config = config
     this._gameLogic = this._params.gameLogicFunction(this.payChannelLogic)
+    this.playerAddress = this._params.Eth.getAccount().address
     this.payChannelLogic = new PayChannelLogic()
 
     this.Rsa = new Rsa()
@@ -120,7 +120,7 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
     this.channelId = makeSeed()
     const args = {
       channelId: this.channelId,
-      playerAddress: this._params.Eth.getAccount().address,
+      playerAddress: this.playerAddress,
       playerDeposit,
       gameData
     }
@@ -275,14 +275,13 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
      * Get player address and last state for close
      * channel and create structure for sign last state
      */
-    const playerAddress = this._params.Eth.getAccount().address
-    const lastState = this.channelState.getState(playerAddress)
+    const lastState = this.channelState.getState(this.playerAddress)
     const closeChannelData: SolidityTypeValue[] = [
       { t: "bytes32", v: lastState._id },
-      { t: "uint256", v: "" + lastState._playerBalance },
-      { t: "uint256", v: "" + lastState._bankrollerBalance },
-      { t: "uint256", v: "" + lastState._totalBet },
-      { t: "uint256", v: "" + lastState._session },
+      { t: "uint", v: '' + lastState._playerBalance },
+      { t: "uint", v: '' + lastState._bankrollerBalance },
+      { t: "uint", v: '' + lastState._totalBet },
+      { t: "uint", v: '' + lastState._session },
       { t: "bool", v: true }
     ]
     /**
@@ -293,12 +292,13 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
     const {
       consentSignature,
       bankrollerAddress
-    } = this._dealer.consentCloseChannel(signLastState)
+    } = await this._dealer.consentCloseChannel(signLastState)
     /**
      * Check consent bankroller
      * if recover open key not equal bankroller address
      * throw error
      */
+    log.info(closeChannelData)
     const recoverOpenkey = this._params.Eth.recover(closeChannelData, consentSignature)
     if (recoverOpenkey.toLowerCase() !== bankrollerAddress.toLowerCase()) {
       throw new Error("Invalid signature")
@@ -322,7 +322,7 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
     ]
 
     try {
-      log.debug(`start openChannel transaction`)
+      log.info(`start openChannel transaction`)
       const closeChannelTX = await this._params.Eth.sendTransaction(
         this._params.payChannelContract,
         "closeByConsent",

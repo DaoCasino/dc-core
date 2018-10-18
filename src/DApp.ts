@@ -6,13 +6,11 @@ import {
 } from "./interfaces/index"
 
 import { Logger } from "dc-logging"
-import { config } from "dc-configs"
 import Contract from "web3/eth/contract"
 import { setInterval } from "timers"
-import { DAppInstance } from "./DAppInstance"
 import { EventEmitter } from "events"
 import DAppPlayerInstance from './DAppPlayerInstance'
-import DAppDealerInstance from './DAppDealeInstance'
+import DAppDealerInstance from './DAppDealerInstance'
 import * as Utils from "dc-ethereum-utils"
 
 
