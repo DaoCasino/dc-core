@@ -1,6 +1,5 @@
 import {
-  Rsa,
-  IRsa,
+  Rsa, IRsa,
   IGameLogic,
   ConnectParams,
   SignedResponse,
@@ -34,7 +33,7 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
   private _params: DAppInstanceParams
   private _gameLogic : IGameLogic
   
-  Rsa: IRsa
+  pRsa: IRsa
   channelId: string
   channelState: ChannelState
   playerAddress: string
@@ -45,7 +44,6 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
     this._config = config
     this._gameLogic = this._params.gameLogicFunction()
 
-    this.Rsa = new Rsa()
     log.debug('Peer instance init')
   }
 
@@ -138,6 +136,9 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
       response: peerResponse,
       signature
     } = await this._dealer.getOpenChannelData(args, argsSignature)
+
+    const {n,e} = peerResponse
+    this.pRsa = new Rsa({ n, e })
 
     /**
      * Check bankroller deposit
@@ -270,7 +271,13 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
       { t: "uint", v: gameData },
       { t: "bytes32", v: seed }
     ]
-    const sign = await this._params.Eth.signHash(sha3(...toSign))
+    console.log('')
+    console.log('')
+    console.log('peer', toSign)
+    console.log('')
+    console.log('')
+    const rndHash = sha3(...toSign)
+    const sign = await this._params.Eth.signHash(rndHash)
 
 
     try {
@@ -283,10 +290,19 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
         sign
       )
 
-      console.log('dealerResult')
-      console.table(dealerResult)
-      // TODO: check random sign
-      // this.openDisputeUI()
+      // @TODO: check random sign
+      // if (!this.pRsa.verify(rndHash, dealerResult.randomSignature, 'utf8', 'hex')) {
+      //   this.openDisputeUI()
+      // }
+
+
+      // Проверяем что рандом сделан из этой подписи
+      if (dealerResult.randomHash !== sha3(dealerResult.randomSignature)) {
+        throw new Error("Invalid random")
+        this.openDisputeUI()
+        return
+      }
+
 
       // Call gamelogic function on player side
       const profit = this._gameLogic.play(
@@ -302,7 +318,10 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
 
       this.channelState._addTotalBet(1*bet2dec(profit))
       this.channelState._addTX(1*bet2dec(userBet))
-    
+      
+      // Сохраняем стейт от банкроллера
+      // this.channelState.addDealerSigned(dealerResult.state)
+
       return profit
 
     } catch (error) {

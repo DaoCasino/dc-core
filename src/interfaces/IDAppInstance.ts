@@ -99,7 +99,8 @@ export interface IDAppDealerInstance {
   callPlay(userBet:number, gameData:any, seed:string, session:number, sign:string): Promise<{
     profit: number,
     randoms: number[],
-    randomSignature: string | Buffer,
+    randomHash: string,
+    randomSignature: string,
     state: any
   }>
   consentCloseChannel(stateSignature: string): ConsentResult

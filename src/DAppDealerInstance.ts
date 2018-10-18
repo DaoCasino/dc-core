@@ -233,12 +233,21 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
       {t: 'uint',    v: gameData        },
       {t: 'bytes32', v: seed            }
     ]
+    
+    console.log('')
+    console.log('')
+    console.log('dealer', rndHashArgs)
+    console.log('')
+    console.log('')
 
     const rndHash = sha3(...rndHashArgs)
-    const rndSign = this.Rsa.sign( rndHash )
+    const rndSign = this.Rsa.sign( rndHash , 'hex', 'utf8').toString()
+
+    const rnd = sha3(rndSign)
+
 
     // TODO : generate rnds by params
-    const rndNum = this._params.Eth.numFromHash( rndHash )
+    const rndNum = this._params.Eth.numFromHash( rnd )
     const randoms = [rndNum]
     const profit = this._gameLogic.play(userBet, gameData, randoms)
 
@@ -251,6 +260,7 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
 
     return { 
       state, profit, randoms, 
+      randomHash      : rndHash,
       randomSignature : rndSign, 
     }
   }
