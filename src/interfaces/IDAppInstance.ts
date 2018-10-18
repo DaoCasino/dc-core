@@ -102,6 +102,7 @@ export interface IDAppDealerInstance extends IDAppInstance {
   ): Promise<{
     profit: number
     randoms: number[]
+    randomHash: string
     randomSignature: string
     state: any
   }>

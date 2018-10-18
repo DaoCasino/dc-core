@@ -242,18 +242,12 @@ export class DAppDealerInstance extends EventEmitter
       { t: "uint", v: gameData },
       { t: "bytes32", v: seed }
     ]
-    
-    console.log('')
-    console.log('')
-    console.log('dealer', rndHashArgs)
-    console.log('')
-    console.log('')
 
     const rndHash = sha3(...rndHashArgs)
     const rndSign = this.Rsa.sign( rndHash , 'hex', 'utf8').toString()
     const rnd     = sha3(rndSign)
     // @TODO : generate rnds by params
-    const rndNum  = this._params.Eth.numFromHash( rnd )
+    const rndNum  = this._params.Eth.numFromHash( rnd , 0 , 10 )
     const randoms = [rndNum]
     const profit  = this._gameLogic.play(userBet, gameData, randoms)
 

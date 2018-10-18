@@ -286,11 +286,7 @@ export class DAppPlayerInstance extends EventEmitter
       { t: "uint", v: gameData },
       { t: "bytes32", v: seed }
     ]
-    console.log('')
-    console.log('')
-    console.log('peer', toSign)
-    console.log('')
-    console.log('')
+
     const rndHash = sha3(...toSign)
     const sign = await this._params.Eth.signHash(rndHash)
 
