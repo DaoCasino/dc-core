@@ -41,6 +41,7 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
   channelId: string
   channelState: ChannelState
   playerAddress: string
+  dealerAddress: string
   payChannelLogic: PayChannelLogic
   playerDepositWei: string
   bankrollerDeposit: number
@@ -51,6 +52,7 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
     this._params = params
     this._config = config
     this._gameLogic = this._params.gameLogicFunction(this.payChannelLogic)
+    this.dealerAddress = this._params.Eth.getAccount().address
     this.payChannelLogic = new PayChannelLogic()
     
     this.Rsa = new Rsa()
