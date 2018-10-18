@@ -1,19 +1,13 @@
-import {
-  IDApp,
-  DAppParams,
-  UserId,
-  GameInfo
-} from "./interfaces/index"
+import { IDApp, DAppParams, UserId, GameInfo } from "./interfaces/index"
 
 import { Logger } from "dc-logging"
 import { config } from "dc-configs"
 import Contract from "web3/eth/contract"
 import { setInterval } from "timers"
 import { EventEmitter } from "events"
-import DAppPlayerInstance from './DAppPlayerInstance'
-import DAppDealerInstance from './DAppDealerInstance'
+import { DAppPlayerInstance } from "./DAppPlayerInstance"
+import { DAppDealerInstance } from "./DAppDealerInstance"
 import * as Utils from "dc-ethereum-utils"
-
 
 const log = new Logger("DAppInstance")
 
@@ -55,14 +49,14 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
       log.debug(["Create DApp error", params], "error")
       throw new Error("slug option is required")
     }
-    
+
     if (!params.contract) {
       throw new Error("Contract is not specified in  DApp params")
     }
-    
+
     this._params = params
     this._instancesMap = new Map()
-    
+
     const { contract, slug } = this._params
     const gameId = slug
 
@@ -72,12 +66,12 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
       hash: Utils.checksum(slug),
       contract
     }
-    
+
     this._payChannelContract = this._params.Eth.initContract(
       contract.abi,
       contract.address
     )
-    
+
     this._payChannelContractAddress = contract.address
     this._gameInfoRoomAddress = `${params.platformId}_${
       params.blockchainNetwork
@@ -110,10 +104,10 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
         readyServers.set(readyInfo.address, readyInfo)
 
         if (this._dappInstancePromise) await this._dappInstancePromise
-        
+
         this._dappInstancePromise = this._chooseServer(readyServers)
         const result = await this._dappInstancePromise
-        
+
         if (result) {
           resolve(result)
         }
@@ -133,7 +127,7 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
       .sort((a, b) => a.deposit - b.deposit)[0]
 
     // TODO: should be some more complicated alg
-    
+
     if (theChosen) {
       const userId = this._params.Eth.getAccount().address
       const { roomAddress } = await this._gameInfoRoom.connect({
@@ -153,8 +147,8 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
         gameInfo: this._gameInfo,
         Eth: this._params.Eth
       })
-      
-      await this.dappInstance.startClient()
+
+      await this.dappInstance.start()
       return this.dappInstance
     }
 
@@ -217,7 +211,7 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
       gameInfo: this._gameInfo,
       Eth: this._params.Eth
     })
-    dappInstance.startServer()
+    dappInstance.start()
     // TODO remove circular dependency
 
     this._instancesMap.set(userId, dappInstance)

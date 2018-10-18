@@ -4,7 +4,8 @@
   "description": "DAO.Casino core library",
   "main": "./lib/index",
   "scripts": {
-    "build": "npm-run-all typescript",
+    "build:ts": "yarn typescript",
+    "build": "yarn typescript",
     "clean": "rimraf lib",
     "typescript": "tsc --build"
   },
@@ -17,7 +18,7 @@
     "dc-configs": "^1.0.0",
     "dc-ethereum-utils": "1.0.0",
     "dc-messaging": "1.0.0",
-    "dc-logging": "^1.0.0",
+    "dc-logging": "1.0.0",
     "node-rsa": "^1.0.1",
     "web3": "1.0.0-beta.36"
   },
