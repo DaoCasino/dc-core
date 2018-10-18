@@ -15,6 +15,7 @@ export class Balances implements IBalances {
     player: number
     bankroller: number
   }
+  private _totalBet = 0
   private _profit = 0
   private _history = []
   constructor() {
@@ -43,6 +44,13 @@ export class Balances implements IBalances {
     return this.balance
   }
 
+  _addTotalBet(userBet){
+    this._totalBet += userBet
+  }
+
+  _getTotalBet(){
+    return this._totalBet
+  }
 
   _addTX(profit: number) {
     this._profit += Utils.bet2dec(profit)

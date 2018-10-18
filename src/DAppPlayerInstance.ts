@@ -401,13 +401,16 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
   }
 
   openDisputeUI(){
-    if (confirm('Open dispute?')) {
+    const dialog = msg=>{
+      return confirm(msg) || log.info(msg)
+    }
+    if (dialog('Open dispute?')) {
 
     }
-    if (confirm('Close channel with last state?')) {
+    if (dialog('Close channel with last state?')) {
     }
 
-    if (confirm('Do nothing?')) {
+    if (dialog('Do nothing?')) {
     }
   }
 

@@ -64,8 +64,9 @@ export class ChannelState {
     const stateHash = sha3(...newState)
     const stateSign = this.eth.signHash(newState)
 
+
     this.states[stateHash] = (!this.states[stateHash]) && { confirmed: false }
-    this.states[stateHash][address] = {
+    this.states[stateHash].bankroller = {
       ...stateData,
       _sign: stateSign,
     }
@@ -146,13 +147,13 @@ export class ChannelState {
     return this.getState(hash)
   }
 
-  // getPlayerSigned(hash?) {
-  //   if (!hash) hash = Object.keys(this.states).splice(-1)
-  //   return this.getState(hash).player
-  // }
+  getPlayerSigned(hash?) {
+    if (!hash) hash = Object.keys(this.states).splice(-1)
+    return this.getState(hash).player
+  }
 
-  // getBankrollerSigned(hash?) {
-  //   if (!hash) hash = Object.keys(this.states).splice(-1)
-  //   return this.getState(hash).bankroller
-  // }
+  getBankrollerSigned(hash?) {
+    if (!hash) hash = Object.keys(this.states).splice(-1)
+    return this.getState(hash).bankroller
+  }
 }
