@@ -33,7 +33,6 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
   private _config: any
   private _params: DAppInstanceParams
   private _gameLogic : IGameLogic
-  private _session : number
   
   Rsa: IRsa
   channelId: string
@@ -42,7 +41,6 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
   
   constructor(params: DAppInstanceParams) {
     super()
-    this._session = 0
     this._params = params
     this._config = config
     this._gameLogic = this._params.gameLogicFunction()
@@ -249,7 +247,7 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
             +params.playerDepositWei,
             +params.bankrollerDepositWei
           )
-          this.channelState.saveState(0, params.playerAddress)
+          this.channelState.saveState(params.playerAddress)
 
           return { ...checkChannel }
         }
@@ -263,12 +261,11 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
   async play( params: { userBet: number, gameData: any } ) {
     const {userBet, gameData} = params
     const userBetWei = bet2dec(userBet)
-    this._session++
 
     const seed = makeSeed()
     const toSign: SolidityTypeValue[] = [
       { t: "bytes32", v: this.channelId },
-      { t: "uint", v: this._session },
+      { t: "uint", v: this.channelState.getSession() },
       { t: "uint", v: userBetWei },
       { t: "uint", v: gameData },
       { t: "bytes32", v: seed }
@@ -278,11 +275,11 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
 
     try {
       // Call gamelogic function on bankrollerside
-      const dealerResult = await this._dealer.play(
+      const dealerResult = await this._dealer.callPlay(
         userBet,
         gameData,
         seed,
-        this._session,
+        this.channelState.getSession(),
         sign
       )
 

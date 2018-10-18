@@ -74,34 +74,34 @@ export interface DAppInstanceView {
 export interface IDAppPlayerInstance {
   on(event: string, func: (data: any) => void)
   startClient(): Promise<any | Error>
-  play(data:{userBet: number, gameData: any} ): Promise<number>
   connect(connectData: ConnectParams): Promise<any | Error>
-  disconnect()
   openChannel(
     openChannelData: OpenChannelParams,
     signature: string
   ): Promise<any | Error>
+  play(data:{userBet: number, gameData: any} ): Promise<number>
   closeChannel(
     closeParams: CloseChannelParams,
     paramsSignature: string
   ): Promise<any | Error>
+  disconnect()
 }
 
 
 export interface IDAppDealerInstance {
   on(event: string, func: (data: any) => void)
   startServer(): any
-  play(userBet:number, gameData:any, seed:string, session:number, sign:string): Promise<{
-    profit: number,
-    randoms: number[],
-    randomSignature: string | Buffer,
-    state: any
-  }>
   getOpenChannelData(
     data: ConnectParams,
     signature: string
   ): Promise<SignedResponse<OpenChannelParams>>
   checkOpenChannel(): Promise<any | Error>
+  callPlay(userBet:number, gameData:any, seed:string, session:number, sign:string): Promise<{
+    profit: number,
+    randoms: number[],
+    randomSignature: string | Buffer,
+    state: any
+  }>
   consentCloseChannel(stateSignature: string): ConsentResult
   checkCloseChannel(): Promise<any | Error>
 }

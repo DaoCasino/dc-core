@@ -175,7 +175,7 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
         channel.playerBalance,
         channel.bankrollerBalance
       )
-      this.channelState.saveState(0, bankrollerAddress)
+      this.channelState.saveState(bankrollerAddress)
 
       this.emit("info", {
         event: "OpenChannel checked",
@@ -192,11 +192,11 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
     }
   }
 
-  async play(userBet:number, gameData:any, seed:string, session:number, sign:string){
+  async callPlay(userBet:number, gameData:any, seed:string, session:number, sign:string){
     const userBetWei = bet2dec(userBet)
-    const lastState = this.channelState.getState( this._params.Eth.getAccount().address )
+    const lastState  = this.channelState.getState( this._params.Eth.getAccount().address )
+    const curSession = this.channelState.getSession()
 
-    const curSession = 1 + lastState._session
     // check session
     if (session !== curSession) {
       throw new Error('incorrect session user:'+session+'!='+curSession) 
@@ -214,14 +214,12 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
 
    // проверка подписи
    const toVerifyHash: SolidityTypeValue[] = [
-     {t: 'bytes32', v: lastState._id },
+     {t: 'bytes32', v: lastState._id   },
      {t: 'uint',    v: curSession      },
-     {t: 'uint',    v: '' + userBetWei  },
-     {t: 'uint',    v: gameData      },
-     {t: 'bytes32', v: seed          }
+     {t: 'uint',    v: '' + userBetWei },
+     {t: 'uint',    v: gameData        },
+     {t: 'bytes32', v: seed            }
    ]
-
-  
    const recoverOpenkey = this._params.Eth.recover(sha3(...toVerifyHash), sign)
    if (recoverOpenkey.toLowerCase() !== this.playerAddress.toLowerCase()) {
      throw new Error("Invalid signature")
@@ -249,7 +247,7 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
     this.channelState._addTotalBet(1*userBetWei)
 
     // Сохраняем подписанный нами последний стейт канала
-    const state = this.channelState.saveState(curSession, this._params.Eth.getAccount().address )
+    const state = this.channelState.saveState(this._params.Eth.getAccount().address )
 
     return { 
       state, profit, randoms, 

@@ -12,6 +12,7 @@ const MAX_HISTORY_ITEMS = 99
 export class ChannelState {
   private _id:string // channel id
   private Eth: Eth
+  private _session:number = 0 // aka nonce
   private _totalBet = 0
   private _profit = 0
   private _history = []
@@ -110,13 +111,17 @@ export class ChannelState {
     return true
   }
 
-  saveState(session: number, address: string): boolean {
+  getSession(){
+    return this._session
+  }
+
+  saveState(address: string): boolean {
     const stateData = {
       '_id'                : this._id,
       '_playerBalance'     : '' + this.balance.player,
       '_bankrollerBalance' : '' + this.balance.bankroller,
       '_totalBet'          : '' + this._totalBet,
-      '_session'           : session
+      '_session'           : this._session
     }
 
     if (!this.checkFormat(stateData)) {
@@ -142,7 +147,9 @@ export class ChannelState {
       _sign: stateSign,
     }
 
-    this.waitStates[stateHash] = session
+    this.waitStates[stateHash] = (1*this._session)
+    this._session++
+
     return this.states[stateHash][address]
   }
 
