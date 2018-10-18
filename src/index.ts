@@ -1,5 +1,4 @@
 export * from './interfaces/index'
-export * from './Balances'
 export * from './DAppFactory'
 export * from './DAppPlayerInstance'
 export * from './DApp'

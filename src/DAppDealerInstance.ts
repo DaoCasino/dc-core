@@ -23,7 +23,6 @@ import {
 
 import { Logger } from "dc-logging"
 import { config } from "dc-configs"
-import { Balances } from "./Balances"
 import { ChannelState } from "./ChannelState"
 import { EventEmitter } from "events"
 
@@ -41,7 +40,6 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
   channelId: string
   channelState: ChannelState
   playerAddress: string
-  Balances: Balances
   playerDepositWei: string
   bankrollerDeposit: number
   bankrollerDepositWei: string
@@ -51,7 +49,6 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
     this._params = params
     this._config = config
     this._gameLogic = this._params.gameLogicFunction()
-    this.Balances = new Balances()
     
     this.Rsa = new Rsa()
     log.debug('Dealer instance init')
@@ -168,27 +165,17 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
     ) {
       this.channel = channel
 
-      // Устанавливаем депозит игры
-      this.Balances._setDeposits(
+
+      // Создаем нулевой стейт
+      // и устанавливаем депозит игры
+      this.channelState = new ChannelState(
+        this._params.Eth,
+        this.channelId,
+        this._params.userId,
         channel.playerBalance,
         channel.bankrollerBalance
       )
-
-      // Создаем нулевой стейт
-      this.channelState = new ChannelState(
-        this._params.userId,
-        this._params.Eth
-      )
-      this.channelState.saveState(
-        {
-          _id: this.channelId,
-          _playerBalance: dec2bet(this.Balances.getBalances().balance.player),
-          _bankrollerBalance: dec2bet(this.Balances.getBalances().balance.bankroller),
-          _totalBet: "0",
-          _session: 0
-        },
-        bankrollerAddress
-      )
+      this.channelState.saveState(0, bankrollerAddress)
 
       this.emit("info", {
         event: "OpenChannel checked",
@@ -242,11 +229,11 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
 
     // Подписываем/генерируем рандом
     const rndHashArgs = [
-      {t: 'bytes32', v: lastState._id },
-      {t: 'uint',    v: curSession             },
-      {t: 'uint',    v: '' + userBetWei         },
-      {t: 'uint',    v: gameData             },
-      {t: 'bytes32', v: seed                 }
+      {t: 'bytes32', v: lastState._id   },
+      {t: 'uint',    v: curSession      },
+      {t: 'uint',    v: '' + userBetWei },
+      {t: 'uint',    v: gameData        },
+      {t: 'bytes32', v: seed            }
     ]
 
     const rndHash = sha3(...rndHashArgs)
@@ -258,17 +245,11 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
     const profit = this._gameLogic.play(userBet, gameData, randoms)
 
     // Меняем баланс в канале
-    this.Balances._addTX(1*userBetWei)
-    this.Balances._addTotalBet(1*userBetWei)
+    this.channelState._addTX(1*bet2dec(profit))
+    this.channelState._addTotalBet(1*userBetWei)
 
     // Сохраняем подписанный нами последний стейт канала
-    const state = this.channelState.saveState({
-      '_id'                : lastState._id,
-      '_playerBalance'     : '' + this.Balances.getBalances().balance.player,
-      '_bankrollerBalance' : '' + this.Balances.getBalances().balance.bankroller,
-      '_totalBet'          : '' + this.Balances._getTotalBet(),
-      '_session'           : curSession
-    }, this._params.Eth.getAccount().address )
+    const state = this.channelState.saveState(curSession, this._params.Eth.getAccount().address )
 
     return { 
       state, profit, randoms, 
@@ -322,7 +303,6 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
       channel.player.toLowerCase() === this._params.userId.toLowerCase() &&
       channel.bankroller.toLowerCase() === this._params.Eth.getAccount().address.toLowerCase()
     ) {
-      this.Balances = null
       this.channelState = null
       this.emit("info", {
         event: "Close channel checked",
@@ -346,15 +326,21 @@ export default class DAppDealerInstance extends EventEmitter implements IDAppDea
 
 
   getView() {
-    const b = this.Balances.getBalances()
+    const b = this.channelState.getData()
 
-    return {
+    const balances = {
       deposit           : b.deposits.bankroller,
       playerBalance     : b.balance.player,
       bankrollerBalance : b.balance.bankroller,
       profit            : b.profit.bankroller,
       playerAddress     : this.playerAddress
     }
+
+    for(const k in balances){
+      if (!balances[k]) continue
+      balances[k] = bet2dec(balances[k])
+    }
+    return balances
   }
 
 }

@@ -22,7 +22,6 @@ import {
 
 import { Logger } from "dc-logging"
 import { config } from "dc-configs"
-import { Balances } from "./Balances"
 import { ChannelState } from "./ChannelState"
 import { EventEmitter } from "events"
 
@@ -40,7 +39,6 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
   channelId: string
   channelState: ChannelState
   playerAddress: string
-  Balances: Balances
   
   constructor(params: DAppInstanceParams) {
     super()
@@ -48,7 +46,6 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
     this._params = params
     this._config = config
     this._gameLogic = this._params.gameLogicFunction()
-    this.Balances = new Balances()
 
     this.Rsa = new Rsa()
     log.debug('Peer instance init')
@@ -244,24 +241,15 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
         /** Check dealer channel */
         const checkChannel = await this._dealer.checkOpenChannel()
         if (checkChannel.state) {
-          /** Set start deposit with game */
-          this.Balances._setDeposits(
-            params.playerDepositWei,
-            params.bankrollerDepositWei
-          )
-
           /** Create channel state instance and save start save */
-          this.channelState = new ChannelState(this._params.userId, this._params.Eth)
-          this.channelState.saveState(
-            {
-              _id: params.channelId,
-              _playerBalance: bet2dec(this.Balances.getBalances().balance.player),
-              _bankrollerBalance: bet2dec(this.Balances.getBalances().balance.bankroller),
-              _totalBet: "0",
-              _session: 0
-            },
-            params.playerAddress
+          this.channelState = new ChannelState(
+            this._params.Eth,
+            params.channelId, 
+            this._params.userId, 
+            +params.playerDepositWei,
+            +params.bankrollerDepositWei
           )
+          this.channelState.saveState(0, params.playerAddress)
 
           return { ...checkChannel }
         }
@@ -315,7 +303,8 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
         this.openDisputeUI()
       }
 
-      this.Balances._addTX(profit)
+      this.channelState._addTotalBet(1*bet2dec(profit))
+      this.channelState._addTX(1*bet2dec(userBet))
     
       return profit
 
@@ -392,7 +381,6 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
       if (closeChannelTX.status) {
         const checkChannel = await this._dealer.checkCloseChannel()
         if (checkChannel.state === '2') {
-          this.Balances = null
           this.channelState = null
           this.emit("info", {event: 'Channel closed'})
           return { ...checkChannel }
