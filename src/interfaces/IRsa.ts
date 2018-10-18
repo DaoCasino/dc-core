@@ -1,31 +1,28 @@
-import NodeRsa from 'node-rsa'
+import NodeRsa from "node-rsa"
 
 export interface IRsa {
   getNE: () => { n: string; e: string }
   encrypt: (
     buffer: Buffer | number | object | string,
-    encoding?: 'buffer' | 'binary' | 'hex' | 'base64',
+    encoding?: "buffer" | "binary" | "hex" | "base64",
     sourceEncoding?: string
   ) => string | Buffer
   decrypt: (buffer: Buffer, encoding?: string) => Buffer | object | string
   encryptPrivate: (
     buffer: Buffer | number | object | string,
-    encoding?: 'buffer' | 'binary' | 'hex' | 'base64',
+    encoding?: "buffer" | "binary" | "hex" | "base64",
     sourceEncoding?: string
   ) => string | Buffer
-  decryptPublic: (
-    buffer: Buffer,
-    encoding?: string
-  ) => Buffer | object | string
+  decryptPublic: (buffer: Buffer, encoding?: string) => Buffer | object | string
   verify: (
     buffer: any,
     signature: any,
     sourceEncoding?: string,
-    signatureEncoding?: 'buffer' | 'binary' | 'hex' | 'base64'
+    signatureEncoding?: "buffer" | "binary" | "hex" | "base64"
   ) => boolean
   sign: (
     buffer: Buffer | number | object | string,
-    encoding?: 'buffer' | 'binary' | 'hex' | 'base64',
+    encoding?: "buffer" | "binary" | "hex" | "base64",
     sourceEncoding?: string
   ) => string | Buffer
 }
@@ -50,8 +47,8 @@ export class Rsa implements IRsa {
    */
   sign(
     buffer: Buffer | number | object | string,
-    encoding: 'buffer' | 'binary' | 'hex' | 'base64' = 'buffer',
-    sourceEncoding: string = 'utf8'
+    encoding: "buffer" | "binary" | "hex" | "base64" = "buffer",
+    sourceEncoding: string = "utf8"
   ): string | Buffer {
     return this._key.sign(buffer, encoding, sourceEncoding)
   }
@@ -65,8 +62,8 @@ export class Rsa implements IRsa {
    */
   encrypt(
     buffer: Buffer | number | object | string,
-    encoding: 'buffer' | 'binary' | 'hex' | 'base64' = 'buffer',
-    sourceEncoding: string = 'utf8'
+    encoding: "buffer" | "binary" | "hex" | "base64" = "buffer",
+    sourceEncoding: string = "utf8"
   ): string | Buffer {
     return this._key.encrypt(buffer, encoding, sourceEncoding)
   }
@@ -89,8 +86,8 @@ export class Rsa implements IRsa {
 
   encryptPrivate(
     buffer: Buffer | number | object | string,
-    encoding: 'buffer' | 'binary' | 'hex' | 'base64' = 'buffer',
-    sourceEncoding: string = 'utf8'
+    encoding: "buffer" | "binary" | "hex" | "base64" = "buffer",
+    sourceEncoding: string = "utf8"
   ): string | Buffer {
     return this._key.encryptPrivate(buffer, encoding, sourceEncoding)
   }
@@ -115,10 +112,10 @@ export class Rsa implements IRsa {
   verify(
     buffer: any,
     signature: any,
-    sourceEncoding: string = 'utf8',
-    signatureEncoding: 'buffer' | 'binary' | 'hex' | 'base64' = 'buffer'
+    sourceEncoding: string = "utf8",
+    signatureEncoding: "buffer" | "binary" | "hex" | "base64" = "buffer"
   ): boolean {
-    return this._key.decryptPublic(
+    return this._key.verify(
       buffer,
       signature,
       sourceEncoding,
