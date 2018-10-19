@@ -1,7 +1,7 @@
 import {
   Rsa,
   IRsa,
-  rndData,
+  RndData,
   IGameLogic,
   ConnectParams,
   ConsentResult,
@@ -237,7 +237,7 @@ export class DAppDealerInstance extends EventEmitter
     //
     // Generate random
     //
-    const rnd:rndData = {}
+    const rnd:RndData = { opts:rndOpts, hash:'', sig:'', res:'' }
     const rndHashArgs:SolidityTypeValue[] = [
       { t: "bytes32", v: lastState._id },
       { t: "uint",    v: curSession    },
@@ -248,7 +248,8 @@ export class DAppDealerInstance extends EventEmitter
     rnd.hash = sha3(...rndHashArgs)
     rnd.sig  = this.Rsa.sign( rnd.hash , 'hex', 'utf8').toString()
     rnd.res  = sha3(rnd.sig)
-    
+
+
     // @TODO : generate many randoms by rndOpts
     const rndNum  = this._params.Eth.numFromHash( rnd.res , rndOpts[0][0], rndOpts[0][1] )
     const randoms = [rndNum]
