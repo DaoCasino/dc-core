@@ -1,7 +1,7 @@
 import {
   Rsa,
   IRsa,
-  RndData,
+  Rnd,
   IGameLogic,
   ConnectParams,
   ConsentResult,
@@ -189,10 +189,9 @@ export class DAppDealerInstance extends EventEmitter
   }
 
   async callPlay(
-    userBet: number, gameData: any, 
+    userBet: number, gameData: any, rndOpts:Rnd['opts'],
     seed: string, session: number,
-    sign: string,
-    rndOpts:number[][]
+    sign: string
   ) {
     const userBetWei = bet2dec(userBet)
     const lastState = this.channelState.getState(
@@ -237,7 +236,7 @@ export class DAppDealerInstance extends EventEmitter
     //
     // Generate random
     //
-    const rnd:RndData = { opts:rndOpts, hash:'', sig:'', res:'' }
+    const rnd:Rnd = { opts:rndOpts, hash:'', sig:'', res:'' }
     const rndHashArgs:SolidityTypeValue[] = [
       { t: "bytes32", v: lastState._id },
       { t: "uint",    v: curSession    },

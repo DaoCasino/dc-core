@@ -37,7 +37,7 @@ export interface IDAppInstance {
 /*
  * Full random object
  */
-export interface RndData {
+export interface Rnd {
   // options for random numbers
   // ex.: [[0,10],[50,100]] - get 2 random numbers, 
   // first from 0 to 10, and second from 50 to 100
@@ -82,7 +82,7 @@ export interface IDAppPlayerInstance extends IDAppInstance {
     verify randoms and channelState
     rndOpts - see callPlay returns params
    */ 
-  play(data: { userBet: number; gameData: any, rndOpts:RndData['opts'] }): Promise<number>
+  play(data: { userBet: number; gameData: any, rndOpts:Rnd['opts'] }): Promise<number>
 
   // Send close channel TX on game contract (oneStepGame.sol)
   // ask dealer to sign data for close by consent and send TX
@@ -119,19 +119,17 @@ export interface IDAppDealerInstance extends IDAppInstance {
     Call game logic function on dealer side
    */
   callPlay(
-    userBet  : number , // humanreadable format token value 1 = 1 * 10**18 
-    gameData : any    , // specified data for game
-    seed     : string , // some entropy from client / random hex hash
-    session  : number , // aka nonce, every call session++ on channelState
-    sign     : string ,
-
-    rndOpts  : RndData['opts'] 
+    userBet  : number      , // humanreadable format token value 1 = 1 * 10**18 
+    gameData : any         , // specified data for game
+    rndOpts  : Rnd['opts'] , // options for generate numbers
+    seed     : string      , // some entropy from client / random hex hash
+    session  : number      , // aka nonce, every call session++ on channelState
+    sign     : string      , // ETHsign of sended data / previous args 
   ): Promise<{
     profit  : number   // result of call game function
     randoms : number[] // randoms arg applied to gamelogic function 
-    
-    state: any // bankroller signed channel state
-    rnd : RndData // random params for verify on client side
+    state : any // bankroller signed channel state
+    rnd   : Rnd // random params for verify on client side
   }>
 
   consentCloseChannel(stateSignature: string): ConsentResult

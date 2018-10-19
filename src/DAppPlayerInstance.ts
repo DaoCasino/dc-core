@@ -1,5 +1,5 @@
 import {
-  Rsa, IRsa,
+  Rsa, IRsa, Rnd,
   IGameLogic,
   ConnectParams,
   SignedResponse,
@@ -293,9 +293,9 @@ export class DAppPlayerInstance extends EventEmitter
     try {
       // Call gamelogic function on bankrollerside
       const dealerRes = await this._dealer.callPlay(
-        userBet, gameData, 
+        userBet, gameData, rndOpts,
         seed, this.channelState.getSession(),
-        sign, rndOpts
+        sign 
       )
 
       // @TODO: check random sign
