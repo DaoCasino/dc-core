@@ -188,15 +188,17 @@ export class DAppDealerInstance extends EventEmitter
     }
   }
 
+  /*
+    Call game logic function and return result to player
+   */
   async callPlay(
     userBet: number, gameData: any, rndOpts:Rnd['opts'],
     seed: string, session: number,
     sign: string
   ) {
+
     const userBetWei = bet2dec(userBet)
-    const lastState = this.channelState.getState(
-      this._params.Eth.getAccount().address
-    )
+    const lastState  = this.channelState.getState(this._params.Eth.getAccount().address)
     const curSession = this.channelState.getSession()
 
     // check session
@@ -220,15 +222,20 @@ export class DAppDealerInstance extends EventEmitter
       )
     }
 
-    // Check user data signature
-    const toVerifyHash:SolidityTypeValue[] = [
+
+    // msg data for hashing by sha3
+    // for check sig and random genrate
+    const msgData:SolidityTypeValue[] = [
       { t: "bytes32", v: lastState._id },
-      { t: "uint",    v: curSession },
+      { t: "uint",    v: curSession    },
       { t: "uint",    v: ''+userBetWei },
       { t: "uint",    v: gameData },
-      { t: "bytes32", v: seed }
+      { t: "bytes32", v: seed     }
     ]
-    const recoverOpenkey = this._params.Eth.recover(sha3(...toVerifyHash), sign)
+    const msgHash = sha3(...msgData)
+
+    // Check msg data signature
+    const recoverOpenkey = this._params.Eth.recover(msgHash, sign)
     if (recoverOpenkey.toLowerCase() !== this.playerAddress.toLowerCase()) {
       throw new Error("Invalid signature")
     }
@@ -236,24 +243,19 @@ export class DAppDealerInstance extends EventEmitter
     //
     // Generate random
     //
-    const rnd:Rnd = { opts:rndOpts, hash:'', sig:'', res:'' }
-    const rndHashArgs:SolidityTypeValue[] = [
-      { t: "bytes32", v: lastState._id },
-      { t: "uint",    v: curSession    },
-      { t: "uint",    v: ''+userBetWei },
-      { t: "uint",    v: gameData },
-      { t: "bytes32", v: seed     }
-    ]
-    rnd.hash = sha3(...rndHashArgs)
-    rnd.sig  = this.Rsa.sign( rnd.hash , 'hex', 'utf8').toString()
-    rnd.res  = sha3(rnd.sig)
-
-
+    const rnd:Rnd = { 
+      opts : rndOpts, 
+      hash : msgHash, 
+      sig  : this.Rsa.sign( msgHash , 'hex', 'utf8').toString(), 
+      res  : ''
+    }
+    rnd.res = sha3(rnd.sig)
     // @TODO : generate many randoms by rndOpts
-    const rndNum  = this._params.Eth.numFromHash( rnd.res , rndOpts[0][0], rndOpts[0][1] )
-    const randoms = [rndNum]
-    const profit  = this._gameLogic.play(userBet, gameData, randoms)
-
+    const randoms = [this._params.Eth.numFromHash( rnd.res , rnd.opts[0][0], rnd.opts[0][1] )]
+    
+    // Call game logic functions with generated randoms
+    const profit = this._gameLogic.play(userBet, gameData, randoms)
+    
     // Change balances on channel state
     this.channelState._addTX(1 * bet2dec(profit))
     this.channelState._addTotalBet(1 * userBetWei)
