@@ -1,99 +1,51 @@
 import NodeRsa from "node-rsa"
-import {IRsa} from './interfaces/index'
+
+
+export interface IRsa {
+  getNE: () => { n: string; e: number }
+  setNE: (n: string, e: number) => { n: string; e: number }
+ 
+  sign: (string) => string
+  
+  verify: (msg:string, sign:string) => boolean
+}
+
 
 export class Rsa implements IRsa {
-  private _key: NodeRsa
+  private _key: 'string'
+  public instance: NodeRsa
+
   constructor(params: any = {}) {
-    this._key = new NodeRsa(params)
+    this._key = params.key || 'components-public'
+    this.instance = new NodeRsa(params)
+
+    if (params.genKeyPair) this.instance.generateKeyPair()
   }
 
-  getNE(): { n: string; e: string } {
-    const { n, e } = this._key.keyPair
-    return { n: `0x${n.toString(16)}`, e: `0x0${e.toString(16)}` }
-  }
-  /**
-   *  Signing data
-   *
-   * @param buffer {string|number|object|array|Buffer} - data for signing. Object and array will convert to JSON string.
-   * @param encoding {string} - optional. Encoding for output result, may be 'buffer', 'binary', 'hex' or 'base64'. Default 'buffer'.
-   * @param source_encoding {string} - optional. Encoding for given string. Default utf8.
-   * @returns {string|Buffer}
-   */
-  sign(
-    buffer: Buffer | number | object | string,
-    encoding: "buffer" | "binary" | "hex" | "base64" = "buffer",
-    sourceEncoding: string = "utf8"
-  ): string | Buffer {
-    return this._key.sign(buffer, encoding, sourceEncoding)
-  }
-  /**
-   * Encrypting data method with public key
-   *
-   * @param buffer {string|number|object|array|Buffer} - data for encrypting. Object and array will convert to JSON string.
-   * @param encoding {string} - optional. Encoding for output result, may be 'buffer', 'binary', 'hex' or 'base64'. Default 'buffer'.
-   * @param source_encoding {string} - optional. Encoding for given string. Default utf8.
-   * @returns {string|Buffer}
-   */
-  encrypt(
-    buffer: Buffer | number | object | string,
-    encoding: "buffer" | "binary" | "hex" | "base64" = "buffer",
-    sourceEncoding: string = "utf8"
-  ): string | Buffer {
-    return this._key.encrypt(buffer, encoding, sourceEncoding)
-  }
-  /**
-   * Decrypting data method with private key
-   *
-   * @param buffer {Buffer} - buffer for decrypting
-   * @param encoding - encoding for result string, can also take 'json' or 'buffer' for the automatic conversion of this type
-   * @returns {Buffer|object|string}
-   */
-  decrypt(buffer: Buffer, encoding: string): Buffer | object | string {
-    return this._key.decrypt(buffer, encoding)
+  getNE(): { n: string; e: number } {
+      const  { n , e } = this.instance.exportKey(this._key)
+
+      return { 
+        n : n.toString('hex'),
+        e
+      } 
   }
 
-  /**
-   * Encrypting data method with private key
-   *
-   * Parameters same as `encrypt` method
-   */
-
-  encryptPrivate(
-    buffer: Buffer | number | object | string,
-    encoding: "buffer" | "binary" | "hex" | "base64" = "buffer",
-    sourceEncoding: string = "utf8"
-  ): string | Buffer {
-    return this._key.encryptPrivate(buffer, encoding, sourceEncoding)
+  setNE(n: string, e: number){
+    return this.instance.importKey({ n: Buffer.from(n, 'hex'), e }, this._key)
   }
 
-  /**
-   * Decrypting data method with public key
-   *
-   * Parameters same as `decrypt` method
-   */
-  decryptPublic(buffer: Buffer, encoding: string): Buffer | object | string {
-    return this._key.decryptPublic(buffer, encoding)
+  sign(msg:string): string  {
+    return this.instance.encryptPrivate(
+      Buffer.from(msg, 'utf8')
+    ).toString('hex')
   }
-  /**
-   *  Verifying signed data
-   *
-   * @param buffer - signed data
-   * @param signature
-   * @param sourceEncoding {string} - optional. Encoding for given string. Default utf8.
-   * @param signatureEncoding - optional. Encoding of given signature. May be 'buffer', 'binary', 'hex' or 'base64'. Default 'buffer'.
-   * @returns {*}
-   */
-  verify(
-    buffer: any,
-    signature: any,
-    sourceEncoding: string = "utf8",
-    signatureEncoding: "buffer" | "binary" | "hex" | "base64" = "buffer"
-  ): boolean {
-    return this._key.verify(
-      buffer,
-      signature,
-      sourceEncoding,
-      signatureEncoding
-    )
+
+  verify(msg:string, sign:string): boolean {
+    const decryptedMsg = this.instance.decryptPublic(
+              Buffer.from( sign , 'hex')
+          ).toString('utf8')
+
+    return msg === decryptedMsg
   }
 }

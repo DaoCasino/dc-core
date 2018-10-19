@@ -1,5 +1,4 @@
 export * from './IDAppInstance'
-export * from './IRsa'
 export * from './GameInfo'
 export * from './GameLogic'
 export * from './IDApp'

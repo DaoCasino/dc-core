@@ -18,12 +18,12 @@ console.log(`
     const dealerPublic = dealer.exportKey('components-public')
 
     console.log('import N, E to player instance')
-    player.importKey({n:dealerPublic.n, e:dealerPublic.e}, 'components-public')
+    const importRes = player.importKey({n:dealerPublic.n, e:dealerPublic.e}, 'components-public')
 
     console.log('encrypt msg by dealer')
     const msg = 'some_data_' + Math.random()*1000000000
     const msgB = Buffer.from(msg, 'utf8')
-    const encM = dealer.encryptPrivate( Buffer.from(msg, 'utf8') )
+    const encM = dealer.encryptPrivate( msg )
 
 
     console.log('dencrypt encM by player')
@@ -56,9 +56,32 @@ console.log(`
 `)
 ;(function(){
     console.info(' >> Create player/client and dealer/bankroller RSA instances')
-    const dealer = new Rsa()
+    const dealer = new Rsa({genKeyPair:true})
     const player = new Rsa()
 
+
+    console.info('export dealer public keys:')
+    const {n, e} = dealer.getNE()
+
+    console.log('import N, E to player instance', n, e)
+    const importRes = player.setNE(n,e)
+
+    const msg = 'some_data_' + Math.random()*1000000000
+    console.log('encrypt msg by dealer:', msg)
+    const sign = dealer.sign( msg )
+
+    console.log('verify msg by player')
+    const verify = player.verify(msg, sign)
+
+    console.table({
+        msg    : msg.substr(0, 10)+'...',
+        sign   : sign.substr(0, 10)+'...',
+        verify : verify,
+    })
+
+    if(!verify){
+        throw new Error('Incorrect RSA verify ')
+    }
    
     console.log(' ✔️  rsa - success!')
 }())
