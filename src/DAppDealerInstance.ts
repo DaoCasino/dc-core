@@ -204,14 +204,14 @@ export class DAppDealerInstance extends EventEmitter
       throw new Error("incorrect session user:" + session + "!=" + curSession)
     }
 
-    // Проверяем нет ли неподписанных юзером предыдущих состояний
+    // Check prev channel states from user
     if (lastState._session > 0 && this.channelState.hasUnconfirmed()) {
       throw new Error(
         "Player " + this.playerAddress + " not confirm previous channel state"
       )
     }
 
-    // Проверяем что юзера достаточно бетов для этой ставки
+    // enough bets ?
     if (lastState._playerBalance < 1 * userBetWei) {
       throw new Error(
         `Player ' + this.playerAddress + ' not enougth money for this bet, balance ${
@@ -254,13 +254,15 @@ export class DAppDealerInstance extends EventEmitter
     const randoms = [rndNum]
     const profit  = this._gameLogic.play(userBet, gameData, randoms)
 
-    // Меняем баланс в канале
+    // Change balances on channel state
     this.channelState._addTX(1 * bet2dec(profit))
     this.channelState._addTotalBet(1 * userBetWei)
 
-    // Сохраняем подписанный нами последний стейт канала
+    // sign and save and send to client current our channel state
     const state = this.channelState.saveState( this._params.Eth.getAccount().address )
 
+    // piu-piu-piu 
+    // the casino never loses ;)
     return { state, profit, randoms, rnd }
   }
 
