@@ -292,53 +292,49 @@ export class DAppPlayerInstance extends EventEmitter
     // and sign sended message
     const rndHash = sha3(...msgData) 
 
-    try {
-      // Call gamelogic function on bankrollerside
-      const dealerRes = await this._dealer.callPlay(
-        userBet, gameData, rndOpts,
-        seed, this.channelState.getSession(),
-        // sign msg
-        await this._params.Eth.signHash(rndHash) 
-      )
 
-      // check our random hash, dealer sign
-      if (!this.pRsa.verify(rndHash, dealerRes.rnd.sig, 'utf8', 'hex')) {
-        throw new Error("Invalid random sig")
-        // this.openDisputeUI()
-      }
+    // Call gamelogic function on bankrollerside
+    const dealerRes = await this._dealer.callPlay(
+      userBet, gameData, rndOpts,
+      seed, this.channelState.getSession(),
+      // sign msg
+      await this._params.Eth.signHash(rndHash) 
+    )
 
-      // Check than random created from this sig
-      if (dealerRes.rnd.res !== sha3(dealerRes.rnd.sig)) {
-        throw new Error("Invalid random, not from sig")
-        // this.openDisputeUI()
-        return
-      }
-
-      // generate randoms 
-      const rndNum  = this._params.Eth.numFromHash( dealerRes.rnd.res , rndOpts[0][0],rndOpts[0][1] )
-      const randoms = [rndNum]
-
-
-      // Call gamelogic function on player side
-      const profit = this._gameLogic.play(userBet, gameData, randoms)
-
-      // TODO: check results
-      if (profit !== dealerRes.profit) {
-        this.openDisputeUI()
-      }
-
-
-      this.channelState._addTotalBet(1*bet2dec(profit))
-      this.channelState._addTX(1*bet2dec(userBet))
-      
-      // Сохраняем стейт от банкроллера
-      // this.channelState.addDealerSigned(dealerRes.state)
-
-      return profit
-    } catch (error) {
-      log.error(error)
-      throw error
+    // check our random hash, dealer sign
+    if (!this.pRsa.verify(rndHash, dealerRes.rnd.sig, 'utf8', 'hex')) {
+      throw new Error("Invalid random sig")
+      // this.openDisputeUI()
     }
+
+    // Check than random created from this sig
+    if (dealerRes.rnd.res !== sha3(dealerRes.rnd.sig)) {
+      throw new Error("Invalid random, not from sig")
+      // this.openDisputeUI()
+      return
+    }
+
+    // generate randoms 
+    const rndNum  = this._params.Eth.numFromHash( dealerRes.rnd.res , rndOpts[0][0],rndOpts[0][1] )
+    const randoms = [rndNum]
+
+
+    // Call gamelogic function on player side
+    const profit = this._gameLogic.play(userBet, gameData, randoms)
+
+    // TODO: check results
+    if (profit !== dealerRes.profit) {
+      this.openDisputeUI()
+    }
+
+
+    this.channelState._addTotalBet(1*bet2dec(profit))
+    this.channelState._addTX(1*bet2dec(userBet))
+    
+    // Сохраняем стейт от банкроллера
+    // this.channelState.addDealerSigned(dealerRes.state)
+
+    return profit
   }
 
   async disconnect() {
