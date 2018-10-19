@@ -274,17 +274,17 @@ export class DAppPlayerInstance extends EventEmitter
   }
 
   // async play(params: { userBet: number; gameData: any, rnd:number[][] }) {
-  async play(params: { userBet: number; gameData: any }) {
-    const { userBet, gameData } = params
+  async play(params: { userBet: number; gameData: any, rndOpts:[[0,100]] }) {
+    const { userBet, gameData, rndOpts } = params
     const userBetWei = bet2dec(userBet)
 
     const seed = makeSeed()
     const toSign: SolidityTypeValue[] = [
       { t: "bytes32", v: this.channelId },
-      { t: "uint", v: this.channelState.getSession() },
-      { t: "uint", v: userBetWei },
-      { t: "uint", v: gameData },
-      { t: "bytes32", v: seed }
+      { t: "uint",    v: this.channelState.getSession() },
+      { t: "uint",    v: userBetWei },
+      { t: "uint",    v: gameData   },
+      { t: "bytes32", v: seed       }
     ]
 
     const rndHash = sha3(...toSign)
@@ -292,37 +292,41 @@ export class DAppPlayerInstance extends EventEmitter
 
     try {
       // Call gamelogic function on bankrollerside
-      const dealerResult = await this._dealer.callPlay(
-        userBet,
-        gameData,
-        seed,
-        this.channelState.getSession(),
-        sign
+      const dealerRes = await this._dealer.callPlay(
+        userBet, gameData, 
+        seed, this.channelState.getSession(),
+        sign, rndOpts
       )
 
       // @TODO: check random sign
-      if (!this.pRsa.verify(rndHash, dealerResult.randomSignature, 'utf8', 'hex')) {
+      if (!this.pRsa.verify(rndHash, dealerRes.rnd.sig, 'utf8', 'hex')) {
         this.openDisputeUI()
       }
 
 
+      // @TODO
+      // делаем такой же рандом из подписи
       // Проверяем что рандом сделан из этой подписи
-      if (dealerResult.randomHash !== sha3(dealerResult.randomSignature)) {
+      if (dealerRes.rnd.hash !== sha3(dealerRes.rnd.sig)) {
         throw new Error("Invalid random")
         this.openDisputeUI()
         return
       }
+
+      const rndNum  = this._params.Eth.numFromHash( dealerRes.rnd.res , 0 , 10 )
+      const randoms = [rndNum]
+
 
 
       // Call gamelogic function on player side
       const profit = this._gameLogic.play(
         userBet,
         gameData,
-        dealerResult.randoms
+        dealerRes.randoms
       )
 
       // TODO: check results
-      if (profit !== dealerResult.profit) {
+      if (profit !== dealerRes.profit) {
         this.openDisputeUI()
       }
 
@@ -331,7 +335,7 @@ export class DAppPlayerInstance extends EventEmitter
       this.channelState._addTX(1*bet2dec(userBet))
       
       // Сохраняем стейт от банкроллера
-      // this.channelState.addDealerSigned(dealerResult.state)
+      // this.channelState.addDealerSigned(dealerRes.state)
 
       return profit
     } catch (error) {

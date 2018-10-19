@@ -1,6 +1,7 @@
 import {
   Rsa,
   IRsa,
+  rndData,
   IGameLogic,
   ConnectParams,
   ConsentResult,
@@ -188,11 +189,10 @@ export class DAppDealerInstance extends EventEmitter
   }
 
   async callPlay(
-    userBet: number,
-    gameData: any,
-    seed: string,
-    session: number,
-    sign: string
+    userBet: number, gameData: any, 
+    seed: string, session: number,
+    sign: string,
+    rndOpts:number[][]
   ) {
     const userBetWei = bet2dec(userBet)
     const lastState = this.channelState.getState(
@@ -221,12 +221,12 @@ export class DAppDealerInstance extends EventEmitter
       )
     }
 
-    // проверка подписи
-    const toVerifyHash: SolidityTypeValue[] = [
+    // Check user data signature
+    const toVerifyHash:SolidityTypeValue[] = [
       { t: "bytes32", v: lastState._id },
-      { t: "uint", v: curSession },
-      { t: "uint", v: "" + userBetWei },
-      { t: "uint", v: gameData },
+      { t: "uint",    v: curSession },
+      { t: "uint",    v: ''+userBetWei },
+      { t: "uint",    v: gameData },
       { t: "bytes32", v: seed }
     ]
     const recoverOpenkey = this._params.Eth.recover(sha3(...toVerifyHash), sign)
@@ -234,20 +234,23 @@ export class DAppDealerInstance extends EventEmitter
       throw new Error("Invalid signature")
     }
 
-    // Подписываем/генерируем рандом
-    const rndHashArgs = [
+    //
+    // Generate random
+    //
+    const rnd:rndData = {}
+    const rndHashArgs:SolidityTypeValue[] = [
       { t: "bytes32", v: lastState._id },
-      { t: "uint", v: curSession },
-      { t: "uint", v: "" + userBetWei },
-      { t: "uint", v: gameData },
-      { t: "bytes32", v: seed }
+      { t: "uint",    v: curSession    },
+      { t: "uint",    v: ''+userBetWei },
+      { t: "uint",    v: gameData },
+      { t: "bytes32", v: seed     }
     ]
-
-    const rndHash = sha3(...rndHashArgs)
-    const rndSign = this.Rsa.sign( rndHash , 'hex', 'utf8').toString()
-    const rnd     = sha3(rndSign)
-    // @TODO : generate rnds by params
-    const rndNum  = this._params.Eth.numFromHash( rnd , 0 , 10 )
+    rnd.hash = sha3(...rndHashArgs)
+    rnd.sig  = this.Rsa.sign( rnd.hash , 'hex', 'utf8').toString()
+    rnd.res  = sha3(rnd.sig)
+    
+    // @TODO : generate many randoms by rndOpts
+    const rndNum  = this._params.Eth.numFromHash( rnd.res , rndOpts[0][0], rndOpts[0][1] )
     const randoms = [rndNum]
     const profit  = this._gameLogic.play(userBet, gameData, randoms)
 
@@ -256,15 +259,9 @@ export class DAppDealerInstance extends EventEmitter
     this.channelState._addTotalBet(1 * userBetWei)
 
     // Сохраняем подписанный нами последний стейт канала
-    const state = this.channelState.saveState(
-      this._params.Eth.getAccount().address
-    )
+    const state = this.channelState.saveState( this._params.Eth.getAccount().address )
 
-    return { 
-      state, profit, randoms, 
-      randomHash      : rndHash,
-      randomSignature : rndSign, 
-    }
+    return { state, profit, randoms, rnd }
   }
 
   consentCloseChannel(stateSignature: string): ConsentResult {
