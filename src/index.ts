@@ -1,5 +1,7 @@
-export * from './interfaces/index'
-export * from './PayChannelLogic'
-export * from './DAppFactory'
-export * from './DApp'
-export * from './GlobalGameLogicStore'
+
+export * from "./interfaces/index"
+export * from "./DAppFactory"
+export * from "./DApp"
+export * from "./DAppPlayerInstance"
+export * from "./DAppDealerInstance"
+export * from "./GlobalGameLogicStore"

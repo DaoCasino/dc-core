@@ -1,5 +1,4 @@
 import {
-  IDAppInstance,
   OpenChannelParams,
   SignedResponse,
   DAppInstanceParams,
@@ -7,12 +6,10 @@ import {
   IDAppDealerInstance,
   IRsa,
   Rsa,
-  CallParams,
   IGameLogic,
-  GetChannelDataParams,
-  GameLogicFunction
+  GetChannelDataParams
 } from "./interfaces/index"
-import { PayChannelLogic } from "./PayChannelLogic"
+
 import { ChannelState } from "./ChannelState"
 import {
   sha3,
@@ -24,42 +21,47 @@ import {
 } from "dc-ethereum-utils"
 import { Logger } from "dc-logging"
 
-import { config, ContractInfo } from "dc-configs"
+import { config, ContractInfo, BlockchainNetwork, IConfig } from "dc-configs"
 
 import { GlobalGameLogicStore } from "./GlobalGameLogicStore"
 import { DApp } from "./DApp"
 import { IMessagingProvider } from "dc-messaging"
+import { DAppPlayerInstance } from "./DAppPlayerInstance"
 
 export class DAppFactory {
-  private _eth: Eth
+  eth: Eth
   private _transportProvider: IMessagingProvider
-  constructor(transportProvider: IMessagingProvider) {
+  private _configuration: IConfig
+  constructor(
+    transportProvider: IMessagingProvider,
+    configuration: IConfig = config
+  ) {
     const {
-      platformId,
       gasPrice: price,
       gasLimit: limit,
       web3HttpProviderUrl: httpProviderUrl,
       contracts,
-      blockchainNetwork
-    } = config
+    } = configuration
+    this._configuration = configuration
     this._transportProvider = transportProvider
-    this._eth = new Eth({
+    this.eth = new Eth({
       httpProviderUrl,
       ERC20ContractInfo: contracts.ERC20,
       gasParams: { price, limit }
     })
-    const _global: any = global
-    _global.DCLib = new GlobalGameLogicStore()
+    const globalStore: any = global || window
+    globalStore.DCLib = new GlobalGameLogicStore()
   }
 
   async create(params: {
     name: string
-    gameLogicFunction: GameLogicFunction
+    gameLogicFunction: () => IGameLogic
     contract: ContractInfo
+    gameEth?: Eth
     rules: any
   }): Promise<DApp> {
-    const { name, gameLogicFunction, contract, rules } = params
-    const { platformId, blockchainNetwork } = config
+    const { name, gameLogicFunction, contract, rules, gameEth } = params
+    const { platformId, blockchainNetwork } = this._configuration
     const dappParams = {
       slug: name,
       platformId,
@@ -68,18 +70,18 @@ export class DAppFactory {
       rules,
       roomProvider: this._transportProvider,
       gameLogicFunction,
-      Eth: this._eth
+      Eth: gameEth || this.eth
     }
-    
+
     return new DApp(dappParams)
   }
-  
+
   async startClient(params: {
     name: string
-    gameLogicFunction: GameLogicFunction
+    gameLogicFunction: () => IGameLogic
     contract: ContractInfo
     rules: any
-  }): Promise<IDAppPlayerInstance> {
+  }): Promise<DAppPlayerInstance> {
     const dapp = await this.create(params)
     const dappInstance = await dapp.startClient()
     return dappInstance
@@ -87,13 +89,13 @@ export class DAppFactory {
 
   async startDealer(params: {
     name: string
-    gameLogicFunction: GameLogicFunction
+    gameLogicFunction: () => IGameLogic
     contract: ContractInfo
     rules: any
-  }) {
+  }): Promise<void> {
     const { privateKey } = config
-    await this._eth.initAccount(privateKey)
-    await this._eth.saveWallet('1234', privateKey)
+    await this.eth.initAccount(privateKey)
+    await this.eth.saveWallet('1234', privateKey)
 
     const dapp = await this.create(params)
     const dappInstance = await dapp.startServer()

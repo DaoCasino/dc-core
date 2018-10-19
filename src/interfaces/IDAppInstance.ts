@@ -1,8 +1,8 @@
-import { IMessagingProvider } from 'dc-messaging'
-import { Eth } from 'dc-ethereum-utils'
-import Contract from 'web3/eth/contract'
-import { GameInfo } from './GameInfo'
-import { GameLogicFunction } from './index'
+import { IMessagingProvider } from "dc-messaging"
+import { Eth } from "dc-ethereum-utils"
+import Contract from "web3/eth/contract"
+import { GameInfo } from "./GameInfo"
+import { IGameLogic } from "./GameLogic"
 
 export type UserId = string
 
@@ -13,7 +13,7 @@ export interface DAppInstanceParams {
   payChannelContract: Contract
   payChannelContractAddress: string
   roomAddress: string
-  gameLogicFunction: GameLogicFunction
+  gameLogicFunction: () => IGameLogic
   roomProvider: IMessagingProvider
   onFinish: (userId: UserId) => void
   gameInfo: GameInfo
@@ -30,7 +30,7 @@ export interface GetChannelDataParams extends ConnectParams {
 }
 
 export interface OpenChannelParams {
-  channelId: any // TODO add type
+  channelId: string
   playerAddress: string
   bankrollerAddress: string
   playerDepositWei: string
@@ -40,25 +40,18 @@ export interface OpenChannelParams {
   n: string
   e: string
 }
-export interface CallParams {
-  userBet: number
-  gameData: number[]
-  seed: string
-  nonce: number
-  sign: string
-}
 
 export interface ConsentResult {
-  consentSignature: string,
+  consentSignature: string
   bankrollerAddress: string
 }
 
 export interface CloseChannelParams {
-  _id: string,
-  _playerBalance: number,
-  _bankrollerBalance: number,
-  _totalBet: number,
-  _session: number,
+  _id: string
+  _playerBalance: number
+  _bankrollerBalance: number
+  _totalBet: number
+  _session: number
   _consent: boolean
 }
 
@@ -75,43 +68,63 @@ export interface DAppInstanceView {
   playerAddress: string
 }
 
-export interface IDAppPlayerInstance {
+export interface RndData {
+  // options for random numbers
+  // ex.: [[0,10],[50,100]] - get 2 random numbers, 
+  // first from 0 to 10, and second from 50 to 100
+  opts : number[][] , // num generate options
+  hash : string     , // hash from rnd args
+  sig  : string     , // RSA signed @hash
+  res  : string     , // sha3 hash of @sig
+}
+
+export interface PlayParams {
+  userBet: number
+  gameData: number[]
+  rndOpts: RndData['opts']
+}
+
+export interface IDAppInstance {
   on(event: string, func: (data: any) => void)
-  startClient(): Promise<any | Error>
-  // call(data: CallParams): Promise<{
-  //   signature: string;
-  //   randomHash: string;
-  //   callResult: any;
-  // } | Error>
-  connect(connectData: ConnectParams): Promise<any | Error>
-  disconnect()
+  start(): Promise<void> | void
+}
+
+export interface IDAppPlayerInstance extends IDAppInstance {
+  connect(connectData: ConnectParams): Promise<any>
   openChannel(
     openChannelData: OpenChannelParams,
     signature: string
-  ): Promise<any | Error>
+  ): Promise<any>
+  play(data: { userBet: number; gameData: any }): Promise<number>
   closeChannel(
     closeParams: CloseChannelParams,
     paramsSignature: string
-  ): Promise<any | Error>
+  ): Promise<any>
+  disconnect()
 }
 
-export interface IDAppDealerInstance {
-  on(event: string, func: (data: any) => void)
-  startServer(): any
-  // call(data: CallParams): Promise<{
-  //   callResult: any,
-  //   randomSignature: string
-  // } | Error>
+export interface IDAppDealerInstance extends IDAppInstance {
   getOpenChannelData(
     data: ConnectParams,
     signature: string
   ): Promise<SignedResponse<OpenChannelParams>>
   checkOpenChannel(): Promise<any | Error>
+  callPlay(
+    userBet: number,
+    gameData: any,
+    seed: string,
+    session: number,
+    sign: string
+  ): Promise<{
+    profit: number
+    randoms: number[]
+    randomSignature: string | Buffer
+    state: any
+  }>
   consentCloseChannel(stateSignature: string): ConsentResult
   checkCloseChannel(): Promise<any | Error>
 }
-
-export interface IDAppInstance {
+export interface IDAppInstanceOld {
   on(event: string, func: (data: any) => void)
   getOpenChannelData: (
     data: ConnectParams,
@@ -124,11 +137,11 @@ export interface IDAppInstance {
   // closeByConsent: (data: any) => { sign: string };
   checkCloseChannel: (data: any) => void
   call: (
-    data: CallParams
+    data: any
   ) => Promise<{
-    signature: string;
-    randomHash: string;
-    gameLogicCallResult: any;
+    signature: string
+    randomHash: string
+    gameLogicCallResult: any
   }>
   reconnect: (data: any) => void
   // closeTimeout(); WTF???

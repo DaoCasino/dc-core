@@ -1,8 +1,3 @@
-import { IPayChannelLogic } from "./IPayChannelLogic"
-
 export interface IGameLogic {
-  Game: any
-  history: any[]
+  play: (userBet:number, gameData:[][], randoms:number[]) => number
 }
-
-export type GameLogicFunction = (payChannel: IPayChannelLogic) => IGameLogic
