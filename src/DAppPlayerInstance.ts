@@ -1,6 +1,5 @@
 import {
-  Rsa,
-  IRsa,
+  Rsa, IRsa, Rnd,
   IGameLogic,
   ConnectParams,
   SignedResponse,
@@ -33,9 +32,9 @@ export class DAppPlayerInstance extends EventEmitter
   private _dealer: IDAppDealerInstance
   private _config: any
   private _params: DAppInstanceParams
-  private _gameLogic: IGameLogic
-
-  Rsa: IRsa
+  private _gameLogic : IGameLogic
+  
+  pRsa: IRsa
   channelId: string
   channelState: ChannelState
   playerAddress: string
@@ -45,8 +44,7 @@ export class DAppPlayerInstance extends EventEmitter
     this._params = params
     this._config = config
     this._gameLogic = this._params.gameLogicFunction()
-
-    this.Rsa = new Rsa()
+    this.pRsa = new Rsa()
     log.debug("Peer instance init")
   }
 
@@ -141,6 +139,9 @@ export class DAppPlayerInstance extends EventEmitter
       response: peerResponse,
       signature
     } = await this._dealer.getOpenChannelData(args, argsSignature)
+
+    const {n,e} = peerResponse
+    this.pRsa = new Rsa({ n, e })
 
     /**
      * Check bankroller deposit
@@ -273,47 +274,65 @@ export class DAppPlayerInstance extends EventEmitter
   }
 
   // async play(params: { userBet: number; gameData: any, rnd:number[][] }) {
-  async play(params: { userBet: number; gameData: any }) {
-    const { userBet, gameData } = params
+  async play(params: { userBet: number; gameData: any, rndOpts:Rnd['opts'] }) {
+    const { userBet, gameData, rndOpts } = params
     const userBetWei = bet2dec(userBet)
 
-    const seed = makeSeed()
-    const toSign: SolidityTypeValue[] = [
+    const seed = makeSeed() // our entropy
+
+    const msgData: SolidityTypeValue[] = [
       { t: "bytes32", v: this.channelId },
-      { t: "uint", v: this.channelState.getSession() },
-      { t: "uint", v: userBetWei },
-      { t: "uint", v: gameData },
-      { t: "bytes32", v: seed }
+      { t: "uint",    v: this.channelState.getSession() },
+      { t: "uint",    v: userBetWei },
+      { t: "uint",    v: gameData   },
+      { t: "bytes32", v: seed       }
     ]
-    const sign = await this._params.Eth.signHash(sha3(...toSign))
+
+    // hash of all data use for generate random
+    // and sign sended message
+    const rndHash = sha3(...msgData) 
 
     try {
       // Call gamelogic function on bankrollerside
-      const dealerResult = await this._dealer.callPlay(
-        userBet,
-        gameData,
-        seed,
-        this.channelState.getSession(),
-        sign
+      const dealerRes = await this._dealer.callPlay(
+        userBet, gameData, rndOpts,
+        seed, this.channelState.getSession(),
+        // sign msg
+        await this._params.Eth.signHash(rndHash) 
       )
 
-      // TODO: check random sign
-      // this.openDisputeUI()
+      // check our random hash, dealer sign
+      if (!this.pRsa.verify(rndHash, dealerRes.rnd.sig, 'utf8', 'hex')) {
+        throw new Error("Invalid random sig")
+        // this.openDisputeUI()
+      }
+
+      // Check than random created from this sig
+      if (dealerRes.rnd.res !== sha3(dealerRes.rnd.sig)) {
+        throw new Error("Invalid random, not from sig")
+        // this.openDisputeUI()
+        return
+      }
+
+      // generate randoms 
+      const rndNum  = this._params.Eth.numFromHash( dealerRes.rnd.res , rndOpts[0][0],rndOpts[0][1] )
+      const randoms = [rndNum]
+
 
       // Call gamelogic function on player side
-      const profit = this._gameLogic.play(
-        userBet,
-        gameData,
-        dealerResult.randoms
-      )
+      const profit = this._gameLogic.play(userBet, gameData, randoms)
 
       // TODO: check results
-      if (profit !== dealerResult.profit) {
+      if (profit !== dealerRes.profit) {
         this.openDisputeUI()
       }
 
-      this.channelState._addTotalBet(1 * bet2dec(profit))
-      this.channelState._addTX(1 * bet2dec(userBet))
+
+      this.channelState._addTotalBet(1*bet2dec(profit))
+      this.channelState._addTX(1*bet2dec(userBet))
+      
+      // Сохраняем стейт от банкроллера
+      // this.channelState.addDealerSigned(dealerRes.state)
 
       return profit
     } catch (error) {
