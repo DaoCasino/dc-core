@@ -30,6 +30,8 @@ console.log(`
     const decM = player.decryptPublic(encM)
 
     console.table({
+        N: dealerPublic.n.toString('hex').substr(0, 10)+'...',
+        E: dealerPublic.e, 
         msg : msgB.toString('hex').substr(0, 10)+'...',
         encryptedMsg  : encM.toString('hex').substr(0, 10)+'...',
         dencryptedMsg : decM.toString('hex').substr(0, 10)+'...',
@@ -50,6 +52,10 @@ console.log(`
 
 
 console.log(`
+
+
+`)
+console.log(`
 ======================
     rsa.ts check
 ======================
@@ -63,7 +69,7 @@ console.log(`
     console.info('export dealer public keys:')
     const {n, e} = dealer.getNE()
 
-    console.log('import N, E to player instance', n, e)
+    console.log('import N, E to player instance')
     const importRes = player.setNE(n,e)
 
     const msg = 'some_data_' + Math.random()*1000000000
@@ -74,6 +80,8 @@ console.log(`
     const verify = player.verify(msg, sign)
 
     console.table({
+        N: n.substr(0, 10)+'...',
+        E: e, 
         msg    : msg.substr(0, 10)+'...',
         sign   : sign.substr(0, 10)+'...',
         verify : verify,
