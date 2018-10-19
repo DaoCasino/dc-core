@@ -40,12 +40,10 @@ export class DAppFactory {
       gasLimit: limit,
       web3HttpProviderUrl: httpProviderUrl,
       contracts,
-      privateKey,
       blockchainNetwork
     } = config
     this._transportProvider = transportProvider
     this._eth = new Eth({
-      privateKey,
       httpProviderUrl,
       ERC20ContractInfo: contracts.ERC20,
       gasParams: { price, limit }
@@ -72,9 +70,8 @@ export class DAppFactory {
       gameLogicFunction,
       Eth: this._eth
     }
-    await this._eth.initAccount()
-    const dapp = new DApp(dappParams)
-    return dapp
+    
+    return new DApp(dappParams)
   }
   
   async startClient(params: {
@@ -94,6 +91,10 @@ export class DAppFactory {
     contract: ContractInfo
     rules: any
   }) {
+    const { privateKey } = config
+    await this._eth.initAccount(privateKey)
+    await this._eth.saveWallet('1234', privateKey)
+
     const dapp = await this.create(params)
     const dappInstance = await dapp.startServer()
     return dappInstance
