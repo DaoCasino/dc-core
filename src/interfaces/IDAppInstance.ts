@@ -68,6 +68,10 @@ export interface GetChannelDataParams extends ConnectParams {
   channelId: string
 }
 
+export interface PlayParams {
+  userBet: number; gameData: any, rndOpts:Rnd['opts']
+}
+
 export interface IDAppPlayerInstance extends IDAppInstance {
   // find bankroller in p2p network and "connect"
   connect(connectData: ConnectParams): Promise<any>
@@ -82,7 +86,7 @@ export interface IDAppPlayerInstance extends IDAppInstance {
     verify randoms and channelState
     rndOpts - see callPlay returns params
    */ 
-  play(data: { userBet: number; gameData: any, rndOpts:Rnd['opts'] }): Promise<number>
+  play(params:PlayParams): Promise<number>
 
   // Send close channel TX on game contract (oneStepGame.sol)
   // ask dealer to sign data for close by consent and send TX
