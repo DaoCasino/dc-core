@@ -2,7 +2,6 @@ import {
   Rsa,
   IRsa,
   IGameLogic,
-  CallParams,
   ConnectParams,
   ConsentResult,
   SignedResponse,
@@ -18,16 +17,16 @@ import {
   dec2bet,
   bet2dec,
   makeSeed,
+  remove0x,
   SolidityTypeValue
 } from "dc-ethereum-utils"
 
 import { Logger } from "dc-logging"
 import { config } from "dc-configs"
-import { PayChannelLogic } from "./PayChannelLogic"
 import { ChannelState } from "./ChannelState"
 import { EventEmitter } from "events"
 
-const log = new Logger("PeerInstance")
+const log = new Logger("DealerInstance")
 
 export class DAppDealerInstance extends EventEmitter
   implements IDAppDealerInstance {
@@ -42,7 +41,6 @@ export class DAppDealerInstance extends EventEmitter
   channelId: string
   channelState: ChannelState
   playerAddress: string
-  payChannelLogic: PayChannelLogic
   playerDepositWei: string
   bankrollerDeposit: number
   bankrollerDepositWei: string
@@ -51,18 +49,10 @@ export class DAppDealerInstance extends EventEmitter
     super()
     this._params = params
     this._config = config
-    this._gameLogic = this._params.gameLogicFunction(this.payChannelLogic)
-    this.payChannelLogic = new PayChannelLogic()
+    this._gameLogic = this._params.gameLogicFunction()
 
     this.Rsa = new Rsa()
     log.debug("Dealer instance init")
-  }
-
-  getView() {
-    return {
-      ...this.payChannelLogic.getView(),
-      playerAddress: this.playerAddress
-    }
   }
 
   eventNames() {
@@ -171,27 +161,16 @@ export class DAppDealerInstance extends EventEmitter
     ) {
       this.channel = channel
 
-      // Устанавливаем депозит игры
-      this.payChannelLogic._setDeposits(
+      // Создаем нулевой стейт
+      // и устанавливаем депозит игры
+      this.channelState = new ChannelState(
+        this._params.Eth,
+        this.channelId,
+        this._params.userId,
         channel.playerBalance,
         channel.bankrollerBalance
       )
-
-      // Создаем нулевой стейт
-      this.channelState = new ChannelState(
-        this._params.userId,
-        this._params.Eth
-      )
-      this.channelState.saveState(
-        {
-          _id: this.channelId,
-          _playerBalance: this.payChannelLogic._getBalance().player,
-          _bankrollerBalance: this.payChannelLogic._getBalance().bankroller,
-          _totalBet: "0",
-          _session: 0
-        },
-        bankrollerAddress
-      )
+      this.channelState.saveState(bankrollerAddress)
 
       this.emit("info", {
         event: "OpenChannel checked",
@@ -205,6 +184,87 @@ export class DAppDealerInstance extends EventEmitter
       return channel
     } else {
       throw new Error("channel not found")
+    }
+  }
+
+  async callPlay(
+    userBet: number,
+    gameData: any,
+    seed: string,
+    session: number,
+    sign: string
+  ) {
+    const userBetWei = bet2dec(userBet)
+    const lastState = this.channelState.getState(
+      this._params.Eth.getAccount().address
+    )
+    const curSession = this.channelState.getSession()
+
+    // check session
+    if (session !== curSession) {
+      throw new Error("incorrect session user:" + session + "!=" + curSession)
+    }
+
+    // Проверяем нет ли неподписанных юзером предыдущих состояний
+    if (lastState._session > 0 && this.channelState.hasUnconfirmed()) {
+      throw new Error(
+        "Player " + this.playerAddress + " not confirm previous channel state"
+      )
+    }
+
+    // Проверяем что юзера достаточно бетов для этой ставки
+    if (lastState._playerBalance < 1 * userBetWei) {
+      throw new Error(
+        `Player ' + this.playerAddress + ' not enougth money for this bet, balance ${
+          lastState._playerBalance
+        } < ${userBet}`
+      )
+    }
+
+    // проверка подписи
+    const toVerifyHash: SolidityTypeValue[] = [
+      { t: "bytes32", v: lastState._id },
+      { t: "uint", v: curSession },
+      { t: "uint", v: "" + userBetWei },
+      { t: "uint", v: gameData },
+      { t: "bytes32", v: seed }
+    ]
+    const recoverOpenkey = this._params.Eth.recover(sha3(...toVerifyHash), sign)
+    if (recoverOpenkey.toLowerCase() !== this.playerAddress.toLowerCase()) {
+      throw new Error("Invalid signature")
+    }
+
+    // Подписываем/генерируем рандом
+    const rndHashArgs = [
+      { t: "bytes32", v: lastState._id },
+      { t: "uint", v: curSession },
+      { t: "uint", v: "" + userBetWei },
+      { t: "uint", v: gameData },
+      { t: "bytes32", v: seed }
+    ]
+
+    const rndHash = sha3(...rndHashArgs)
+    const rndSign = this.Rsa.sign(rndHash)
+
+    // TODO : generate rnds by params
+    const rndNum = this._params.Eth.numFromHash(rndHash)
+    const randoms = [rndNum]
+    const profit = this._gameLogic.play(userBet, gameData, randoms)
+
+    // Меняем баланс в канале
+    this.channelState._addTX(1 * bet2dec(profit))
+    this.channelState._addTotalBet(1 * userBetWei)
+
+    // Сохраняем подписанный нами последний стейт канала
+    const state = this.channelState.saveState(
+      this._params.Eth.getAccount().address
+    )
+
+    return {
+      state,
+      profit,
+      randoms,
+      randomSignature: rndSign
     }
   }
 
@@ -254,7 +314,6 @@ export class DAppDealerInstance extends EventEmitter
       channel.bankroller.toLowerCase() ===
         this._params.Eth.getAccount().address.toLowerCase()
     ) {
-      this.payChannelLogic = null
       this.channelState = null
       this.emit("info", {
         event: "Close channel checked",
@@ -270,5 +329,23 @@ export class DAppDealerInstance extends EventEmitter
     } else {
       throw new Error("channel not found")
     }
+  }
+
+  getView() {
+    const b = this.channelState.getData()
+
+    const balances = {
+      deposit: b.deposits.bankroller,
+      playerBalance: b.balance.player,
+      bankrollerBalance: b.balance.bankroller,
+      profit: b.profit.bankroller,
+      playerAddress: this.playerAddress
+    }
+
+    for (const k in balances) {
+      if (!balances[k]) continue
+      balances[k] = bet2dec(balances[k])
+    }
+    return balances
   }
 }

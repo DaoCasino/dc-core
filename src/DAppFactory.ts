@@ -1,16 +1,13 @@
 import {
-  IDAppInstance,
   OpenChannelParams,
   SignedResponse,
   DAppInstanceParams,
   IRsa,
   Rsa,
-  CallParams,
   IGameLogic,
-  GetChannelDataParams,
-  GameLogicFunction
+  GetChannelDataParams
 } from "./interfaces/index"
-import { PayChannelLogic } from "./PayChannelLogic"
+
 import { ChannelState } from "./ChannelState"
 import {
   sha3,
@@ -58,7 +55,7 @@ export class DAppFactory {
   }
   async create(params: {
     name: string
-    gameLogicFunction: GameLogicFunction
+    gameLogicFunction: () => IGameLogic
     contract: ContractInfo
     rules: any
   }): Promise<DApp> {
@@ -81,7 +78,7 @@ export class DAppFactory {
 
   async startClient(params: {
     name: string
-    gameLogicFunction: GameLogicFunction
+    gameLogicFunction: () => IGameLogic
     contract: ContractInfo
     rules: any
   }): Promise<DAppPlayerInstance> {
@@ -92,7 +89,7 @@ export class DAppFactory {
 
   async startDealer(params: {
     name: string
-    gameLogicFunction: GameLogicFunction
+    gameLogicFunction: () => IGameLogic
     contract: ContractInfo
     rules: any
   }) {

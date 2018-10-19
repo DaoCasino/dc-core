@@ -2,7 +2,6 @@ import {
   Rsa,
   IRsa,
   IGameLogic,
-  CallParams,
   ConnectParams,
   SignedResponse,
   OpenChannelParams,
@@ -23,7 +22,6 @@ import {
 
 import { Logger } from "dc-logging"
 import { config } from "dc-configs"
-import { PayChannelLogic } from "./PayChannelLogic"
 import { ChannelState } from "./ChannelState"
 import { EventEmitter } from "events"
 
@@ -41,14 +39,12 @@ export class DAppPlayerInstance extends EventEmitter
   channelId: string
   channelState: ChannelState
   playerAddress: string
-  payChannelLogic: PayChannelLogic
 
   constructor(params: DAppInstanceParams) {
     super()
     this._params = params
     this._config = config
-    this._gameLogic = this._params.gameLogicFunction(this.payChannelLogic)
-    this.payChannelLogic = new PayChannelLogic()
+    this._gameLogic = this._params.gameLogicFunction()
 
     this.Rsa = new Rsa()
     log.debug("Peer instance init")
@@ -258,36 +254,70 @@ export class DAppPlayerInstance extends EventEmitter
         /** Check dealer channel */
         const checkChannel = await this._dealer.checkOpenChannel()
         if (checkChannel.state) {
-          /** Set start deposit with game */
-          this.payChannelLogic._setDeposits(
-            dec2bet(params.playerDepositWei),
-            dec2bet(params.bankrollerDepositWei)
-          )
-
           /** Create channel state instance and save start save */
           this.channelState = new ChannelState(
+            this._params.Eth,
+            params.channelId,
             this._params.userId,
-            this._params.Eth
+            +params.playerDepositWei,
+            +params.bankrollerDepositWei
           )
-          this.channelState.saveState(
-            {
-              _id: params.channelId,
-              _playerBalance: bet2dec(
-                this.payChannelLogic._getBalance().player
-              ),
-              _bankrollerBalance: bet2dec(
-                this.payChannelLogic._getBalance().bankroller
-              ),
-              _totalBet: "0",
-              _session: 0
-            },
-            params.playerAddress
-          )
+          this.channelState.saveState(params.playerAddress)
 
           return { ...checkChannel }
         }
       }
     } catch (error) {
+      throw error
+    }
+  }
+
+  // async play(params: { userBet: number; gameData: any, rnd:number[][] }) {
+  async play(params: { userBet: number; gameData: any }) {
+    const { userBet, gameData } = params
+    const userBetWei = bet2dec(userBet)
+
+    const seed = makeSeed()
+    const toSign: SolidityTypeValue[] = [
+      { t: "bytes32", v: this.channelId },
+      { t: "uint", v: this.channelState.getSession() },
+      { t: "uint", v: userBetWei },
+      { t: "uint", v: gameData },
+      { t: "bytes32", v: seed }
+    ]
+    const sign = await this._params.Eth.signHash(sha3(...toSign))
+
+    try {
+      // Call gamelogic function on bankrollerside
+      const dealerResult = await this._dealer.callPlay(
+        userBet,
+        gameData,
+        seed,
+        this.channelState.getSession(),
+        sign
+      )
+
+      // TODO: check random sign
+      // this.openDisputeUI()
+
+      // Call gamelogic function on player side
+      const profit = this._gameLogic.play(
+        userBet,
+        gameData,
+        dealerResult.randoms
+      )
+
+      // TODO: check results
+      if (profit !== dealerResult.profit) {
+        this.openDisputeUI()
+      }
+
+      this.channelState._addTotalBet(1 * bet2dec(profit))
+      this.channelState._addTX(1 * bet2dec(userBet))
+
+      return profit
+    } catch (error) {
+      log.error(error)
       throw error
     }
   }
@@ -365,7 +395,6 @@ export class DAppPlayerInstance extends EventEmitter
       if (closeChannelTX.status) {
         const checkChannel = await this._dealer.checkCloseChannel()
         if (checkChannel.state === "2") {
-          this.payChannelLogic = null
           this.channelState = null
           this.emit("info", { event: "Channel closed" })
           return { ...checkChannel }
@@ -373,6 +402,19 @@ export class DAppPlayerInstance extends EventEmitter
       }
     } catch (error) {
       throw error
+    }
+  }
+
+  openDisputeUI() {
+    const dialog = msg => {
+      return confirm(msg) || log.info(msg)
+    }
+    if (dialog("Open dispute?")) {
+    }
+    if (dialog("Close channel with last state?")) {
+    }
+
+    if (dialog("Do nothing?")) {
     }
   }
 }
