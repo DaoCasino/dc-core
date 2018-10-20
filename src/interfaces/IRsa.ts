@@ -29,14 +29,27 @@ export interface IRsa {
 
 export class Rsa implements IRsa {
   private _key: NodeRsa
-  constructor(params: any = {}) {
-    this._key = new NodeRsa(params)
+  constructor(params?: any) {
+    this._key = (params && params.key) || new NodeRsa(params || {})
+  }
+
+  static importPublic(params: { n: Buffer; e: number }): Rsa {
+    const key = new NodeRsa()
+    key.importKey(params, "components-public")
+    return new Rsa(key)
   }
 
   getNE(): { n: string; e: string } {
     const { n, e } = this._key.keyPair
-    return { n: `0x${n.toString(16)}`, e: `0x0${e.toString(16)}` }
+    const copy = {...n}
+    const buf = n.toBuffer()
+    n.fromBuffer(buf)
+    const nStr = `0x${buf.toString("hex")}`
+    const buf2 = Buffer.from(nStr, "hex")
+    n.fromBuffer(buf2)
+    return { n: `0x${buf.toString("hex")}`, e: `0x0${e.toString(16)}` }
   }
+
   /**
    *  Signing data
    *
