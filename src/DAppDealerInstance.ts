@@ -1,5 +1,4 @@
 import {
-  Rsa,
   IRsa,
   Rnd,
   IGameLogic,
@@ -26,7 +25,7 @@ import { Logger } from "dc-logging"
 import { config } from "dc-configs"
 import { ChannelState } from "./ChannelState"
 import { EventEmitter } from "events"
-
+import { Rsa } from "./Rsa"
 const log = new Logger("DealerInstance")
 
 export class DAppDealerInstance extends EventEmitter
@@ -71,7 +70,12 @@ export class DAppDealerInstance extends EventEmitter
       true
     )
   }
-
+  /**
+   * Create structure for recover
+   * and recover openkey with structure and signature
+   * if recover open key not equal player address
+   * throw error
+   */
   async getOpenChannelData(
     params: GetChannelDataParams,
     paramsSignature: string
@@ -79,12 +83,6 @@ export class DAppDealerInstance extends EventEmitter
     /** Parse params */
     const { channelId, playerAddress, playerDeposit, gameData } = params
 
-    /**
-     * Create structure for recover
-     * and recover openkey with structure and signature
-     * if recover open key not equal player address
-     * throw error
-     */
     const toRecover: SolidityTypeValue[] = [
       { t: "bytes32", v: channelId },
       { t: "address", v: playerAddress },
@@ -192,13 +190,17 @@ export class DAppDealerInstance extends EventEmitter
     Call game logic function and return result to player
    */
   async callPlay(
-    userBet: number, gameData: any, rndOpts:Rnd['opts'],
-    seed: string, session: number,
+    userBet: number,
+    gameData: any,
+    rndOpts: Rnd["opts"],
+    seed: string,
+    session: number,
     sign: string
   ) {
-
     const userBetWei = bet2dec(userBet)
-    const lastState  = this.channelState.getState(this._params.Eth.getAccount().address)
+    const lastState = this.channelState.getState(
+      this._params.Eth.getAccount().address
+    )
     const curSession = this.channelState.getSession()
 
     // check session
@@ -222,15 +224,14 @@ export class DAppDealerInstance extends EventEmitter
       )
     }
 
-
     // msg data for hashing by sha3
     // for check sig and random genrate
-    const msgData:SolidityTypeValue[] = [
+    const msgData: SolidityTypeValue[] = [
       { t: "bytes32", v: lastState._id },
-      { t: "uint",    v: curSession    },
-      { t: "uint",    v: ''+userBetWei },
-      { t: "uint",    v: gameData },
-      { t: "bytes32", v: seed     }
+      { t: "uint", v: curSession },
+      { t: "uint", v: "" + userBetWei },
+      { t: "uint", v: gameData },
+      { t: "bytes32", v: seed }
     ]
     const msgHash = sha3(...msgData)
 
@@ -243,27 +244,31 @@ export class DAppDealerInstance extends EventEmitter
     //
     // Generate random
     //
-    const rnd:Rnd = { 
-      opts : rndOpts, 
-      hash : msgHash, 
-      sig  : this.Rsa.sign( msgHash , 'hex', 'utf8').toString(), 
-      res  : ''
+    const rnd: Rnd = {
+      opts: rndOpts,
+      hash: msgHash,
+      sig: this.Rsa.sign(msgHash).toString(),
+      res: ""
     }
     rnd.res = sha3(rnd.sig)
     // @TODO : generate many randoms by rndOpts
-    const randoms = [this._params.Eth.numFromHash( rnd.res , rnd.opts[0][0], rnd.opts[0][1] )]
-    
+    const randoms = [
+      this._params.Eth.numFromHash(rnd.res, rnd.opts[0][0], rnd.opts[0][1])
+    ]
+
     // Call game logic functions with generated randoms
     const profit = this._gameLogic.play(userBet, gameData, randoms)
-    
+
     // Change balances on channel state
     this.channelState._addTX(1 * bet2dec(profit))
     this.channelState._addTotalBet(1 * userBetWei)
 
     // sign and save and send to client current our channel state
-    const state = this.channelState.saveState( this._params.Eth.getAccount().address )
+    const state = this.channelState.saveState(
+      this._params.Eth.getAccount().address
+    )
 
-    // piu-piu-piu 
+    // piu-piu-piu
     // the casino never loses ;)
     return { state, profit, randoms, rnd }
   }

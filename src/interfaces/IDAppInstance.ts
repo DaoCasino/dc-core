@@ -3,6 +3,7 @@ import { Eth } from "dc-ethereum-utils"
 import Contract from "web3/eth/contract"
 import { GameInfo } from "./GameInfo"
 import { IGameLogic } from "./GameLogic"
+import { Rnd } from "./Rnd"
 
 export type UserId = string
 
@@ -32,32 +33,19 @@ export interface IDAppInstance {
   start(): Promise<void> | void
 }
 
-
-
-/*
- * Full random object
- */
-export interface Rnd {
-  // options for random numbers
-  // ex.: [[0,10],[50,100]] - get 2 random numbers, 
-  // first from 0 to 10, and second from 50 to 100
-  opts : number[][] , // num generate options
-  hash : string     , // hash from rnd args
-  sig  : string     , // RSA signed @hash
-  res  : string     , // sha3 hash of @sig
-}
-
-
 /*
  * Client 
  */
 export interface OpenChannelParams {
   channelId: string
-  playerAddress: string , bankrollerAddress: string
-  playerDepositWei: string , bankrollerDepositWei: string
+  playerAddress: string
+  bankrollerAddress: string
+  playerDepositWei: string
+  bankrollerDepositWei: string
   openingBlock: string
   gameData: string
-  n: string, e: string
+  n: string
+  e: string
 }
 export interface ConnectParams {
   playerDeposit: number
@@ -69,7 +57,9 @@ export interface GetChannelDataParams extends ConnectParams {
 }
 
 export interface PlayParams {
-  userBet: number; gameData: any, rndOpts:Rnd['opts']
+  userBet: number
+  gameData: any
+  rndOpts: Rnd["opts"]
 }
 
 export interface IDAppPlayerInstance extends IDAppInstance {
@@ -85,8 +75,9 @@ export interface IDAppPlayerInstance extends IDAppInstance {
     Call game logic function on dealer side and client side
     verify randoms and channelState
     rndOpts - see callPlay returns params
-   */ 
-  play(params:PlayParams): Promise<number>
+   */
+
+  play(params: PlayParams): Promise<number>
 
   // Send close channel TX on game contract (oneStepGame.sol)
   // ask dealer to sign data for close by consent and send TX
@@ -107,7 +98,6 @@ export interface CloseChannelParams {
   _consent: boolean
 }
 
-
 /*
  * Dealer / bankroller 
  */
@@ -116,31 +106,30 @@ export interface IDAppDealerInstance extends IDAppInstance {
     data: ConnectParams,
     signature: string
   ): Promise<SignedResponse<OpenChannelParams>>
-  
+
   checkOpenChannel(): Promise<any | Error>
 
   /*
     Call game logic function on dealer side
    */
   callPlay(
-    userBet  : number      , // humanreadable format token value 1 = 1 * 10**18 
-    gameData : any         , // specified data for game
-    rndOpts  : Rnd['opts'] , // options for generate numbers
-    seed     : string      , // some entropy from client / random hex hash
-    session  : number      , // aka nonce, every call session++ on channelState
-    sign     : string      , // ETHsign of sended data / previous args 
+    userBet: number, // humanreadable format token value 1 = 1 * 10**18
+    gameData: any, // specified data for game
+    rndOpts: Rnd["opts"], // options for generate numbers
+    seed: string, // some entropy from client / random hex hash
+    session: number, // aka nonce, every call session++ on channelState
+    sign: string // ETHsign of sended data / previous args
   ): Promise<{
-    profit  : number   // result of call game function
-    randoms : number[] // randoms arg applied to gamelogic function 
-    state : any // bankroller signed channel state
-    rnd   : Rnd // random params for verify on client side
+    profit: number // result of call game function
+    randoms: number[] // randoms arg applied to gamelogic function
+    state: any // bankroller signed channel state
+    rnd: Rnd // random params for verify on client side
   }>
 
   consentCloseChannel(stateSignature: string): ConsentResult
-  
+
   checkCloseChannel(): Promise<any | Error>
 }
-
 
 export interface ConsentResult {
   consentSignature: string
