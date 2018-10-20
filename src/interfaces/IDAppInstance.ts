@@ -77,7 +77,7 @@ export interface IDAppPlayerInstance extends IDAppInstance {
     rndOpts - see callPlay returns params
    */
 
-  play(params: PlayParams): Promise<number>
+  play(params: PlayParams): Promise<{ profit: number; randoms: number[] }>
 
   // Send close channel TX on game contract (oneStepGame.sol)
   // ask dealer to sign data for close by consent and send TX
