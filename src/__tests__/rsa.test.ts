@@ -1,5 +1,5 @@
 import NodeRSA from "node-rsa"
-import { Rsa } from "../rsa"
+import { Rsa } from "../Rsa"
 
 console.log(`
 ======================
