@@ -95,7 +95,6 @@ export interface CloseChannelParams {
   _bankrollerBalance: number
   _totalBet: number
   _session: number
-  _consent: boolean
 }
 
 /*

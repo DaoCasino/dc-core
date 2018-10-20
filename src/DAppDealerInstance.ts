@@ -23,7 +23,7 @@ import {
 
 import { Logger } from "dc-logging"
 import { config } from "dc-configs"
-import { ChannelState } from "./ChannelState"
+import { ChannelState, State } from "./ChannelState"
 import { EventEmitter } from "events"
 import { Rsa } from "./Rsa"
 const log = new Logger("DealerInstance")
@@ -89,7 +89,7 @@ export class DAppDealerInstance extends EventEmitter
       { t: "uint", v: "" + playerDeposit },
       { t: "uint", v: gameData }
     ]
-    const recoverOpenkey = this._params.Eth.recover(toRecover, paramsSignature)
+    const recoverOpenkey = this._params.Eth.recover(sha3(...toRecover), paramsSignature)
     if (recoverOpenkey.toLowerCase() !== playerAddress.toLowerCase()) {
       throw new Error("Invalid signature")
     }
@@ -137,7 +137,7 @@ export class DAppDealerInstance extends EventEmitter
       ]
 
       /** Sign args for open channel */
-      const signature = this._params.Eth.signHash(toSign)
+      const signature = this._params.Eth.signData(toSign)
       return { response, signature }
     } catch (error) {
       throw error
@@ -166,10 +166,11 @@ export class DAppDealerInstance extends EventEmitter
         this._params.Eth,
         this.channelId,
         this._params.userId,
+        this._params.Eth.getAccount().address,
         channel.playerBalance,
         channel.bankrollerBalance
       )
-      this.channelState.saveState(bankrollerAddress)
+      this.channelState.createState(0,0)
 
       this.emit("info", {
         event: "OpenChannel checked",
@@ -198,9 +199,7 @@ export class DAppDealerInstance extends EventEmitter
     sign: string
   ) {
     const userBetWei = bet2dec(userBet)
-    const lastState = this.channelState.getState(
-      this._params.Eth.getAccount().address
-    )
+    const lastState = this.channelState.getState()
     const curSession = this.channelState.getSession()
 
     // check session
@@ -209,7 +208,7 @@ export class DAppDealerInstance extends EventEmitter
     }
 
     // Check prev channel states from user
-    if (lastState._session > 0 && this.channelState.hasUnconfirmed()) {
+    if (lastState._session > 0 && this.channelState.isAddrConfirm(this.playerAddress)) {
       throw new Error(
         "Player " + this.playerAddress + " not confirm previous channel state"
       )
@@ -260,12 +259,9 @@ export class DAppDealerInstance extends EventEmitter
     const profit = this._gameLogic.play(userBet, gameData, randoms)
 
     // Change balances on channel state
-    this.channelState._addTX(1 * bet2dec(profit))
-    this.channelState._addTotalBet(1 * userBetWei)
-
-    // sign and save and send to client current our channel state
-    const state = this.channelState.saveState(
-      this._params.Eth.getAccount().address
+    const state = this.channelState.createState(
+      1 * userBetWei,
+      1 * bet2dec(profit)
     )
 
     // piu-piu-piu
@@ -273,10 +269,14 @@ export class DAppDealerInstance extends EventEmitter
     return { state, profit, randoms, rnd }
   }
 
+  confirmState(state:State){
+    return this.channelState.confirmState(state, this.playerAddress)
+  }
+
   consentCloseChannel(stateSignature: string): ConsentResult {
     /** Get bankroller Address and last state for close channel */
     const bankrollerAddress = this._params.Eth.getAccount().address
-    const lastState = this.channelState.getState(bankrollerAddress)
+    const lastState = this.channelState.getState()
 
     /** create structure for recover signature */
     const consentData: SolidityTypeValue[] = [
@@ -284,22 +284,22 @@ export class DAppDealerInstance extends EventEmitter
       { t: "uint", v: "" + lastState._playerBalance },
       { t: "uint", v: "" + lastState._bankrollerBalance },
       { t: "uint", v: "" + lastState._totalBet },
-      { t: "uint", v: lastState._session },
+      { t: "uint", v: "" + lastState._session },
       { t: "bool", v: true }
     ]
-
+    const consentHash = sha3(...consentData)
     /**
      * Recover address with signature and params
      * if recover open key not equal player address
      * then throw error
      */
-    const recoverOpenkey = this._params.Eth.recover(consentData, stateSignature)
+    const recoverOpenkey = this._params.Eth.recover(consentHash, stateSignature)
     if (recoverOpenkey.toLowerCase() !== this.playerAddress.toLowerCase()) {
       throw new Error("Invalid signature")
     }
 
     /** Sign and return consent structure */
-    const consentSignature = this._params.Eth.signHash(consentData)
+    const consentSignature = this._params.Eth.signHash(consentHash)
     return { consentSignature, bankrollerAddress }
   }
 
