@@ -192,13 +192,17 @@ export class DAppDealerInstance extends EventEmitter
     Call game logic function and return result to player
    */
   async callPlay(
-    userBet: number, gameData: any, rndOpts:Rnd['opts'],
-    seed: string, session: number,
+    userBet: number,
+    gameData: any,
+    rndOpts: Rnd["opts"],
+    seed: string,
+    session: number,
     sign: string
   ) {
-
     const userBetWei = bet2dec(userBet)
-    const lastState  = this.channelState.getState(this._params.Eth.getAccount().address)
+    const lastState = this.channelState.getState(
+      this._params.Eth.getAccount().address
+    )
     const curSession = this.channelState.getSession()
 
     // check session
@@ -222,15 +226,14 @@ export class DAppDealerInstance extends EventEmitter
       )
     }
 
-
     // msg data for hashing by sha3
     // for check sig and random genrate
-    const msgData:SolidityTypeValue[] = [
+    const msgData: SolidityTypeValue[] = [
       { t: "bytes32", v: lastState._id },
-      { t: "uint",    v: curSession    },
-      { t: "uint",    v: ''+userBetWei },
-      { t: "uint",    v: gameData },
-      { t: "bytes32", v: seed     }
+      { t: "uint", v: curSession },
+      { t: "uint", v: "" + userBetWei },
+      { t: "uint", v: gameData },
+      { t: "bytes32", v: seed }
     ]
     const msgHash = sha3(...msgData)
 
@@ -243,27 +246,31 @@ export class DAppDealerInstance extends EventEmitter
     //
     // Generate random
     //
-    const rnd:Rnd = { 
-      opts : rndOpts, 
-      hash : msgHash, 
-      sig  : this.Rsa.sign( msgHash , 'hex', 'utf8').toString(), 
-      res  : ''
+    const rnd: Rnd = {
+      opts: rndOpts,
+      hash: msgHash,
+      sig: this.Rsa.sign(msgHash, "hex", "utf8").toString(),
+      res: ""
     }
     rnd.res = sha3(rnd.sig)
     // @TODO : generate many randoms by rndOpts
-    const randoms = [this._params.Eth.numFromHash( rnd.res , rnd.opts[0][0], rnd.opts[0][1] )]
-    
+    const randoms = [
+      this._params.Eth.numFromHash(rnd.res, rnd.opts[0][0], rnd.opts[0][1])
+    ]
+
     // Call game logic functions with generated randoms
     const profit = this._gameLogic.play(userBet, gameData, randoms)
-    
+
     // Change balances on channel state
     this.channelState._addTX(1 * bet2dec(profit))
     this.channelState._addTotalBet(1 * userBetWei)
 
     // sign and save and send to client current our channel state
-    const state = this.channelState.saveState( this._params.Eth.getAccount().address )
+    const state = this.channelState.saveState(
+      this._params.Eth.getAccount().address
+    )
 
-    // piu-piu-piu 
+    // piu-piu-piu
     // the casino never loses ;)
     return { state, profit, randoms, rnd }
   }
