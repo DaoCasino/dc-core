@@ -2,6 +2,7 @@ import { IMessagingProvider } from "dc-messaging"
 import { Eth } from "dc-ethereum-utils"
 import Contract from "web3/eth/contract"
 import { GameInfo } from "./GameInfo"
+import { State } from "../ChannelState"
 import { IGameLogic } from "./GameLogic"
 import { Rnd } from "./Rnd"
 
@@ -124,7 +125,7 @@ export interface IDAppDealerInstance extends IDAppInstance {
     state: any // bankroller signed channel state
     rnd: Rnd // random params for verify on client side
   }>
-
+  confirmState(state:State):boolean
   consentCloseChannel(stateSignature: string): ConsentResult
 
   checkCloseChannel(): Promise<any | Error>

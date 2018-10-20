@@ -265,7 +265,9 @@ export class DAppPlayerInstance extends EventEmitter
             this._params.userId,
             params.bankrollerAddress,
             +params.playerDepositWei,
-            +params.bankrollerDepositWei
+            +params.bankrollerDepositWei,
+
+            this._params.Eth.getAccount().address // owner
           )
           this.channelState.createState(0,0)
 
@@ -341,13 +343,16 @@ export class DAppPlayerInstance extends EventEmitter
       1 * bet2dec(profit)
     )
 
-    // try add bankroller sign state
-    // this.channelState.confirmState(dealerRes.state, this.channelState.bankrollerOpenkey)
-    
+    log.debug('dealerRes', dealerRes)
+    log.debug('profit', profit)
+    log.debug('player state', state)
 
+    // try add bankroller sign state
+    this.channelState.confirmState(dealerRes.state, this.channelState.bankrollerOpenkey)
+    
     // Send our signed state to dealer
     // dealerRes.state
-    // const confirmed = await this._dealer.confirmState(state}
+    const confirmed = await this._dealer.confirmState(state)
 
     return profit
   }

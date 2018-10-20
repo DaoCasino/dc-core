@@ -168,7 +168,9 @@ export class DAppDealerInstance extends EventEmitter
         this._params.userId,
         this._params.Eth.getAccount().address,
         channel.playerBalance,
-        channel.bankrollerBalance
+        channel.bankrollerBalance,
+        
+        this._params.Eth.getAccount().address // owner
       )
       this.channelState.createState(0,0)
 
@@ -208,7 +210,7 @@ export class DAppDealerInstance extends EventEmitter
     }
 
     // Check prev channel states from user
-    if (lastState._session > 0 && this.channelState.isAddrConfirm(this.playerAddress)) {
+    if (this.channelState.hasUnconfirmed(this.playerAddress)) {
       throw new Error(
         "Player " + this.playerAddress + " not confirm previous channel state"
       )
@@ -270,7 +272,8 @@ export class DAppDealerInstance extends EventEmitter
   }
 
   confirmState(state:State){
-    return this.channelState.confirmState(state, this.playerAddress)
+    const stateFromPlayerConfirmed = this.channelState.confirmState(state, this.playerAddress)
+    return stateFromPlayerConfirmed
   }
 
   consentCloseChannel(stateSignature: string): ConsentResult {

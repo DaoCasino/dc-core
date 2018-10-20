@@ -23,6 +23,8 @@ export class ChannelState {
   private _totalBet = 0
   private _profit = 0
 
+  owner:string // instance owner
+
   state: State
 
   playerOpenkey: string
@@ -43,8 +45,10 @@ export class ChannelState {
     playerOpenkey: string,
     bankrollerOpenkey: string,
     playerDeposit: number,
-    bankrollerDeposit: number
+    bankrollerDeposit: number,
+    owner:string
   ) {
+    this.owner = owner
     this._id = channelId
     this.Eth = eth
 
@@ -152,28 +156,45 @@ export class ChannelState {
 
     this._session++
 
-    return {
+    this.state = {
       data  : stateData,
       hash  : stateHash,
       signs : {
         [ourAddr] : stateSign
       }
     }
+
+    return this.state
   }
 
   getState():State['data'] {
     return this.state.data
   }
 
-  isAddrConfirm(address:string) {
-    return !!this.state.signs[address]
+  hasUnconfirmed(address:string) {
+    if (this._session < 2) {
+      return false
+    }
+
+    const addrSign = this.state.signs[address]
+    if (!addrSign) {
+      return true
+    }
+
+    const recoverOpenkey = this.Eth.recover(this.state.hash, addrSign)
+    
+    if (recoverOpenkey.toLowerCase() !== address.toLowerCase()) {
+      return true
+    }
+
+    return false
   }
 
   confirmState(theirState:State, address:string){
     const theirHash = this._sha3state(theirState.data)
-
+    
     if (this.state.hash !== theirHash) {
-      log.error(' state_hash!=player_state_hash ...')
+      log.error(' this.state.hash !== theirHash ...')
       return false
     }
 
