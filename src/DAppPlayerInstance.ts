@@ -175,7 +175,7 @@ export class DAppPlayerInstance extends EventEmitter
       this._params.payChannelContractAddress,
       peerResponse.bankrollerAddress
     )
-    if (bankrollerAllowance < dec2bet(bankrollerDeposit)) {
+    if (dec2bet(bankrollerAllowance) < bankrollerDeposit) {
       throw new Error(`
         Bankroller allowance too low ${bankrollerAllowance},
         for deposit ${bankrollerDeposit}
@@ -354,7 +354,7 @@ export class DAppPlayerInstance extends EventEmitter
     // dealerRes.state
     const confirmed = await this._dealer.confirmState(state)
 
-    return profit
+    return { profit, randoms }
   }
 
   async disconnect() {
