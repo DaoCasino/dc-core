@@ -1,5 +1,4 @@
 import {
-  Rsa,
   IRsa,
   Rnd,
   IGameLogic,
@@ -26,7 +25,7 @@ import { Logger } from "dc-logging"
 import { config } from "dc-configs"
 import { ChannelState } from "./ChannelState"
 import { EventEmitter } from "events"
-
+import { Rsa } from "./Rsa"
 const log = new Logger("DealerInstance")
 
 export class DAppDealerInstance extends EventEmitter
@@ -71,7 +70,12 @@ export class DAppDealerInstance extends EventEmitter
       true
     )
   }
-
+  /**
+   * Create structure for recover
+   * and recover openkey with structure and signature
+   * if recover open key not equal player address
+   * throw error
+   */
   async getOpenChannelData(
     params: GetChannelDataParams,
     paramsSignature: string
@@ -79,12 +83,6 @@ export class DAppDealerInstance extends EventEmitter
     /** Parse params */
     const { channelId, playerAddress, playerDeposit, gameData } = params
 
-    /**
-     * Create structure for recover
-     * and recover openkey with structure and signature
-     * if recover open key not equal player address
-     * throw error
-     */
     const toRecover: SolidityTypeValue[] = [
       { t: "bytes32", v: channelId },
       { t: "address", v: playerAddress },
@@ -249,7 +247,7 @@ export class DAppDealerInstance extends EventEmitter
     const rnd: Rnd = {
       opts: rndOpts,
       hash: msgHash,
-      sig: this.Rsa.sign(msgHash, "hex", "utf8").toString(),
+      sig: this.Rsa.sign(msgHash).toString(),
       res: ""
     }
     rnd.res = sha3(rnd.sig)

@@ -7,7 +7,8 @@
     "build:ts": "yarn typescript",
     "build": "yarn typescript",
     "clean": "rimraf lib",
-    "typescript": "tsc --build"
+    "typescript": "tsc --build",
+    "test:rsa": "ts-node src/__tests__/rsa.test.ts"
   },
   "keywords": [],
   "author": "",
