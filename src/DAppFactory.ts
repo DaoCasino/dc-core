@@ -41,10 +41,12 @@ export class DAppFactory {
       gasLimit: limit,
       web3HttpProviderUrl: httpProviderUrl,
       contracts,
+      walletName
     } = configuration
     this._configuration = configuration
     this._transportProvider = transportProvider
     this.eth = new Eth({
+      walletName,
       httpProviderUrl,
       ERC20ContractInfo: contracts.ERC20,
       gasParams: { price, limit }

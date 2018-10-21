@@ -45,6 +45,7 @@ export class DAppPlayerInstance extends EventEmitter
     this._config = config
     this._gameLogic = this._params.gameLogicFunction()
 
+    this.playerAddress = this._params.Eth.getAccount().address
     this.Rsa = new Rsa()
     log.debug("Peer instance init")
   }
@@ -122,6 +123,8 @@ export class DAppPlayerInstance extends EventEmitter
       playerDeposit,
       gameData
     }
+
+    
 
     /** Sign peer args */
     const argsToSign: SolidityTypeValue[] = [
@@ -378,7 +381,7 @@ export class DAppPlayerInstance extends EventEmitter
     ]
 
     try {
-      log.info(`start openChannel transaction`)
+      log.info(`start close channel transaction`)
       const closeChannelTX = await this._params.Eth.sendTransaction(
         this._params.payChannelContract,
         "closeByConsent",
