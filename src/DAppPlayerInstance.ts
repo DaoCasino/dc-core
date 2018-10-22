@@ -1,6 +1,6 @@
 import {
-  Rsa,
   IRsa,
+  Rnd,
   IGameLogic,
   ConnectParams,
   SignedResponse,
@@ -24,6 +24,7 @@ import { Logger } from "dc-logging"
 import { config } from "dc-configs"
 import { ChannelState } from "./ChannelState"
 import { EventEmitter } from "events"
+import { Rsa } from "./Rsa"
 
 const log = new Logger("PeerInstance")
 
@@ -35,7 +36,7 @@ export class DAppPlayerInstance extends EventEmitter
   private _params: DAppInstanceParams
   private _gameLogic: IGameLogic
 
-  Rsa: IRsa
+  pRsa: IRsa
   channelId: string
   channelState: ChannelState
   playerAddress: string
@@ -45,8 +46,7 @@ export class DAppPlayerInstance extends EventEmitter
     this._params = params
     this._config = config
     this._gameLogic = this._params.gameLogicFunction()
-
-    this.Rsa = new Rsa()
+    this.pRsa = new Rsa(null)
     log.debug("Peer instance init")
   }
 
@@ -142,6 +142,9 @@ export class DAppPlayerInstance extends EventEmitter
       signature
     } = await this._dealer.getOpenChannelData(args, argsSignature)
 
+    const { n, e } = peerResponse
+    this.pRsa.setNE({ n, e })
+
     /**
      * Check bankroller deposit
      * if deposit bankroller not equal
@@ -171,7 +174,7 @@ export class DAppPlayerInstance extends EventEmitter
       this._params.payChannelContractAddress,
       peerResponse.bankrollerAddress
     )
-    if (bankrollerAllowance < dec2bet(bankrollerDeposit)) {
+    if (dec2bet(bankrollerAllowance) < bankrollerDeposit) {
       throw new Error(`
         Bankroller allowance too low ${bankrollerAllowance},
         for deposit ${bankrollerDeposit}
@@ -273,53 +276,71 @@ export class DAppPlayerInstance extends EventEmitter
   }
 
   // async play(params: { userBet: number; gameData: any, rnd:number[][] }) {
-  async play(params: { userBet: number; gameData: any }) {
-    const { userBet, gameData } = params
+  async play(params: { userBet: number; gameData: any; rndOpts: Rnd["opts"] }) {
+    const { userBet, gameData, rndOpts } = params
     const userBetWei = bet2dec(userBet)
 
-    const seed = makeSeed()
-    const toSign: SolidityTypeValue[] = [
+    const seed = makeSeed() // our entropy
+
+    const msgData: SolidityTypeValue[] = [
       { t: "bytes32", v: this.channelId },
       { t: "uint", v: this.channelState.getSession() },
       { t: "uint", v: userBetWei },
       { t: "uint", v: gameData },
       { t: "bytes32", v: seed }
     ]
-    const sign = await this._params.Eth.signHash(sha3(...toSign))
 
-    try {
-      // Call gamelogic function on bankrollerside
-      const dealerResult = await this._dealer.callPlay(
-        userBet,
-        gameData,
-        seed,
-        this.channelState.getSession(),
-        sign
-      )
+    // hash of all data use for generate random
+    // and sign sended message
+    const rndHash = sha3(...msgData)
 
-      // TODO: check random sign
+    // Call gamelogic function on bankrollerside
+    const dealerRes = await this._dealer.callPlay(
+      userBet,
+      gameData,
+      rndOpts,
+      seed,
+      this.channelState.getSession(),
+      // sign msg
+      await this._params.Eth.signHash(rndHash)
+    )
+
+    // check our random hash, dealer sign
+    if (!this.pRsa.verify(rndHash, dealerRes.rnd.sig)) {
+      throw new Error("Invalid random sig")
       // this.openDisputeUI()
-
-      // Call gamelogic function on player side
-      const profit = this._gameLogic.play(
-        userBet,
-        gameData,
-        dealerResult.randoms
-      )
-
-      // TODO: check results
-      if (profit !== dealerResult.profit) {
-        this.openDisputeUI()
-      }
-
-      this.channelState._addTotalBet(1 * bet2dec(profit))
-      this.channelState._addTX(1 * bet2dec(userBet))
-
-      return profit
-    } catch (error) {
-      log.error(error)
-      throw error
     }
+
+    // Check than random created from this sig
+    if (dealerRes.rnd.res !== sha3(dealerRes.rnd.sig)) {
+      throw new Error("Invalid random, not from sig")
+      // this.openDisputeUI()
+      return
+    }
+
+    // generate randoms
+    const rndNum = this._params.Eth.numFromHash(
+      dealerRes.rnd.res,
+      rndOpts[0][0],
+      rndOpts[0][1]
+    )
+    const randoms = [rndNum]
+
+    // Call gamelogic function on player side
+    const profit = this._gameLogic.play(userBet, gameData, randoms)
+
+    // TODO: check results
+    if (profit !== dealerRes.profit) {
+      this.openDisputeUI()
+    }
+
+    this.channelState._addTotalBet(1 * bet2dec(profit))
+    this.channelState._addTX(1 * bet2dec(userBet))
+
+    // Сохраняем стейт от банкроллера
+    // this.channelState.addDealerSigned(dealerRes.state)
+
+    return { profit, randoms }
   }
 
   async disconnect() {

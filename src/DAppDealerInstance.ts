@@ -1,6 +1,6 @@
 import {
-  Rsa,
   IRsa,
+  Rnd,
   IGameLogic,
   ConnectParams,
   ConsentResult,
@@ -25,7 +25,7 @@ import { Logger } from "dc-logging"
 import { config } from "dc-configs"
 import { ChannelState } from "./ChannelState"
 import { EventEmitter } from "events"
-
+import { Rsa } from "./Rsa"
 const log = new Logger("DealerInstance")
 
 export class DAppDealerInstance extends EventEmitter
@@ -70,7 +70,12 @@ export class DAppDealerInstance extends EventEmitter
       true
     )
   }
-
+  /**
+   * Create structure for recover
+   * and recover openkey with structure and signature
+   * if recover open key not equal player address
+   * throw error
+   */
   async getOpenChannelData(
     params: GetChannelDataParams,
     paramsSignature: string
@@ -78,12 +83,6 @@ export class DAppDealerInstance extends EventEmitter
     /** Parse params */
     const { channelId, playerAddress, playerDeposit, gameData } = params
 
-    /**
-     * Create structure for recover
-     * and recover openkey with structure and signature
-     * if recover open key not equal player address
-     * throw error
-     */
     const toRecover: SolidityTypeValue[] = [
       { t: "bytes32", v: channelId },
       { t: "address", v: playerAddress },
@@ -187,9 +186,14 @@ export class DAppDealerInstance extends EventEmitter
     }
   }
 
+  /*
+    Call game logic function and return result to player
+   */
+
   async callPlay(
     userBet: number,
     gameData: any,
+    rndOpts: Rnd["opts"],
     seed: string,
     session: number,
     sign: string
@@ -205,67 +209,69 @@ export class DAppDealerInstance extends EventEmitter
       throw new Error("incorrect session user:" + session + "!=" + curSession)
     }
 
-    // Проверяем нет ли неподписанных юзером предыдущих состояний
+    // Check prev channel states from user
     if (lastState._session > 0 && this.channelState.hasUnconfirmed()) {
       throw new Error(
         "Player " + this.playerAddress + " not confirm previous channel state"
       )
     }
 
-    // Проверяем что юзера достаточно бетов для этой ставки
+    // enough bets ?
     if (lastState._playerBalance < 1 * userBetWei) {
       throw new Error(
-        `Player ' + this.playerAddress + ' not enougth money for this bet, balance ${
+        `Player ${this.playerAddress} not enougth money for this bet, balance ${
           lastState._playerBalance
         } < ${userBet}`
       )
     }
 
-    // проверка подписи
-    const toVerifyHash: SolidityTypeValue[] = [
+    // msg data for hashing by sha3
+    // for check sig and random genrate
+    const msgData: SolidityTypeValue[] = [
       { t: "bytes32", v: lastState._id },
       { t: "uint", v: curSession },
       { t: "uint", v: "" + userBetWei },
       { t: "uint", v: gameData },
       { t: "bytes32", v: seed }
     ]
-    const recoverOpenkey = this._params.Eth.recover(sha3(...toVerifyHash), sign)
+    const msgHash = sha3(...msgData)
+
+    // Check msg data signature
+    const recoverOpenkey = this._params.Eth.recover(msgHash, sign)
     if (recoverOpenkey.toLowerCase() !== this.playerAddress.toLowerCase()) {
       throw new Error("Invalid signature")
     }
 
-    // Подписываем/генерируем рандом
-    const rndHashArgs = [
-      { t: "bytes32", v: lastState._id },
-      { t: "uint", v: curSession },
-      { t: "uint", v: "" + userBetWei },
-      { t: "uint", v: gameData },
-      { t: "bytes32", v: seed }
+    //
+    // Generate random
+    //
+    const rnd: Rnd = {
+      opts: rndOpts,
+      hash: msgHash,
+      sig: this.Rsa.sign(msgHash).toString(),
+      res: ""
+    }
+    rnd.res = sha3(rnd.sig)
+    // @TODO : generate many randoms by rndOpts
+    const randoms = [
+      this._params.Eth.numFromHash(rnd.res, rnd.opts[0][0], rnd.opts[0][1])
     ]
 
-    const rndHash = sha3(...rndHashArgs)
-    const rndSign = this.Rsa.sign(rndHash)
-
-    // TODO : generate rnds by params
-    const rndNum = this._params.Eth.numFromHash(rndHash)
-    const randoms = [rndNum]
+    // Call game logic functions with generated randoms
     const profit = this._gameLogic.play(userBet, gameData, randoms)
 
-    // Меняем баланс в канале
+    // Change balances on channel state
     this.channelState._addTX(1 * bet2dec(profit))
     this.channelState._addTotalBet(1 * userBetWei)
 
-    // Сохраняем подписанный нами последний стейт канала
+    // sign and save and send to client current our channel state
     const state = this.channelState.saveState(
       this._params.Eth.getAccount().address
     )
 
-    return {
-      state,
-      profit,
-      randoms,
-      randomSignature: rndSign
-    }
+    // piu-piu-piu
+    // the casino never loses ;)
+    return { state, profit, randoms, rnd }
   }
 
   consentCloseChannel(stateSignature: string): ConsentResult {
