@@ -10,7 +10,7 @@ export interface DAppParams {
   rules: any
   platformId: string
   blockchainNetwork: string
-  gameLogicFunction: ()=>IGameLogic
+  gameLogicFunction: () => IGameLogic
   contract: ContractInfo
   roomProvider: IMessagingProvider
   Eth: Eth
