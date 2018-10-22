@@ -192,6 +192,7 @@ export class DAppDealerInstance extends EventEmitter
   /*
     Call game logic function and return result to player
    */
+
   async callPlay(
     userBet: number,
     gameData: any,
@@ -219,7 +220,7 @@ export class DAppDealerInstance extends EventEmitter
     // enough bets ?
     if (lastState._playerBalance < 1 * userBetWei) {
       throw new Error(
-        `Player ' + this.playerAddress + ' not enougth money for this bet, balance ${
+        `Player ${this.playerAddress} not enougth money for this bet, balance ${
           lastState._playerBalance
         } < ${userBet}`
       )
