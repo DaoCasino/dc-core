@@ -1,8 +1,7 @@
 import {
-  Rsa,
   IRsa,
+  Rnd,
   IGameLogic,
-  CallParams,
   ConnectParams,
   SignedResponse,
   OpenChannelParams,
@@ -23,34 +22,32 @@ import {
 
 import { Logger } from "dc-logging"
 import { config } from "dc-configs"
-import { PayChannelLogic } from "./PayChannelLogic"
-import { ChannelState } from "./ChannelState"
+import { ChannelState, State } from "./ChannelState"
 import { EventEmitter } from "events"
+import { Rsa } from "./Rsa"
 
 const log = new Logger("PeerInstance")
 
-export default class DAppPlayerInstance extends EventEmitter implements IDAppPlayerInstance {
+export class DAppPlayerInstance extends EventEmitter
+  implements IDAppPlayerInstance {
   private _peer: IDAppPlayerInstance
   private _dealer: IDAppDealerInstance
   private _config: any
   private _params: DAppInstanceParams
-  private _gameLogic : IGameLogic
-  
-  Rsa: IRsa
+  private _gameLogic: IGameLogic
+
+  pRsa: IRsa
   channelId: string
   channelState: ChannelState
   playerAddress: string
-  payChannelLogic: PayChannelLogic
-  
+
   constructor(params: DAppInstanceParams) {
     super()
     this._params = params
     this._config = config
-    this._gameLogic = this._params.gameLogicFunction(this.payChannelLogic)
-    this.payChannelLogic = new PayChannelLogic()
-
-    this.Rsa = new Rsa()
-    log.debug('Peer instance init')
+    this._gameLogic = this._params.gameLogicFunction()
+    this.pRsa = new Rsa(null)
+    log.debug("Peer instance init")
   }
 
   eventNames() {
@@ -61,20 +58,22 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
     this._dealer.on(event, func)
   }
 
-  async startClient(): Promise<any | Error> {
-    this._dealer = (!this._dealer) && await this._params.roomProvider.getRemoteInterface<
-      IDAppDealerInstance
-    >(this._params.roomAddress)
+  async start(): Promise<void> {
+    this._dealer =
+      !this._dealer &&
+      (await this._params.roomProvider.getRemoteInterface<IDAppDealerInstance>(
+        this._params.roomAddress
+      ))
   }
 
-  async connect(connectData: ConnectParams): Promise<any | Error> {
+  async connect(connectData: ConnectParams): Promise<any> {
     /** Parse method params */
     const { playerDeposit, gameData } = connectData
 
     /** Check peer balance */
     log.info(`🔐 Open channel with deposit: ${playerDeposit}`)
     const userBalance = await this._params.Eth.getBalances()
-    
+
     /**
      * If user Ethereum balance less
      * minimum balance for game then throw Error
@@ -129,19 +128,23 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
     const argsToSign: SolidityTypeValue[] = [
       { t: "bytes32", v: args.channelId },
       { t: "address", v: args.playerAddress },
-      { t: "uint", v: '' + args.playerDeposit },
+      { t: "uint", v: "" + args.playerDeposit },
       { t: "uint", v: args.gameData }
     ]
-    const argsSignature: string = this._params.Eth.signHash(argsToSign)
-    
-    /** 
+
+    const argsSignature: string = this._params.Eth.signData(argsToSign)
+
+    /**
      * Request to dealer args to
-     * check and get data for open channel 
+     * check and get data for open channel
      */
     const {
       response: peerResponse,
       signature
     } = await this._dealer.getOpenChannelData(args, argsSignature)
+
+    const { n, e } = peerResponse
+    this.pRsa.setNE({ n, e })
 
     /**
      * Check bankroller deposit
@@ -162,7 +165,7 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
 
       throw new Error("Bankroller open channel deposit too low")
     }
-    
+
     /**
      * Check bankroller allowance for
      * game contract if allowance not enought
@@ -195,27 +198,39 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
       { t: "bytes32", v: this.channelId },
       { t: "address", v: args.playerAddress },
       { t: "address", v: peerResponse.bankrollerAddress },
-      { t: "uint", v: '' + bet2dec(playerDeposit) },
+      { t: "uint", v: "" + bet2dec(playerDeposit) },
       { t: "uint", v: peerResponse.bankrollerDepositWei },
       { t: "uint", v: peerResponse.openingBlock },
       { t: "uint", v: gameData },
       { t: "bytes", v: peerResponse.n },
       { t: "bytes", v: peerResponse.e }
     ]
-    const recoverOpenkey: string = this._params.Eth.recover(toRecover, signature)
-    if (recoverOpenkey.toLowerCase() !== peerResponse.bankrollerAddress.toLowerCase()) {
+    const recoverOpenkey: string = this._params.Eth.recover(
+      sha3(...toRecover),
+      signature
+    )
+    if (
+      recoverOpenkey.toLowerCase() !==
+      peerResponse.bankrollerAddress.toLowerCase()
+    ) {
       throw new Error("Invalid signature")
     }
 
     /** Open channel with params */
     const channelStatus = await this.openChannel(peerResponse, signature)
-    if (channelStatus.state === '1') {
-      this.emit("info", { event: "Channel open", data: { channelStatus, peerResponse } })
+    if (channelStatus.state === "1") {
+      this.emit("info", {
+        event: "Channel open",
+        data: { channelStatus, peerResponse }
+      })
       return { ...channelStatus, ...peerResponse }
     }
   }
 
-  async openChannel(params: OpenChannelParams, signature: string): Promise<any | Error> {
+  async openChannel(
+    params: OpenChannelParams,
+    signature: string
+  ): Promise<any> {
     /** Create open channel arguments */
     const openChannelArgs = [
       params.channelId,
@@ -243,24 +258,18 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
         /** Check dealer channel */
         const checkChannel = await this._dealer.checkOpenChannel()
         if (checkChannel.state) {
-          /** Set start deposit with game */
-          this.payChannelLogic._setDeposits(
-            dec2bet(params.playerDepositWei),
-            dec2bet(params.bankrollerDepositWei)  
-          )
-
           /** Create channel state instance and save start save */
-          this.channelState = new ChannelState(this._params.userId, this._params.Eth)
-          this.channelState.saveState(
-            {
-              _id: params.channelId,
-              _playerBalance: bet2dec(this.payChannelLogic._getBalance().player),
-              _bankrollerBalance: bet2dec(this.payChannelLogic._getBalance().bankroller),
-              _totalBet: "0",
-              _session: 0
-            },
-            params.playerAddress
+          this.channelState = new ChannelState(
+            this._params.Eth,
+            params.channelId,
+            this._params.userId,
+            params.bankrollerAddress,
+            +params.playerDepositWei,
+            +params.bankrollerDepositWei,
+
+            this._params.Eth.getAccount().address // owner
           )
+          this.channelState.createState(0,0)
 
           return { ...checkChannel }
         }
@@ -270,13 +279,91 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
     }
   }
 
+  // async play(params: { userBet: number; gameData: any, rnd:number[][] }) {
+  async play(params: { userBet: number; gameData: any; rndOpts: Rnd["opts"] }) {
+    const { userBet, gameData, rndOpts } = params
+    const userBetWei = bet2dec(userBet)
+
+    const seed = makeSeed() // our entropy
+
+    const msgData: SolidityTypeValue[] = [
+      { t: "bytes32", v: this.channelId },
+      { t: "uint", v: this.channelState.getSession() },
+      { t: "uint", v: userBetWei },
+      { t: "uint", v: gameData },
+      { t: "bytes32", v: seed }
+    ]
+
+    // hash of all data use for generate random
+    // and sign sended message
+    const rndHash = sha3(...msgData)
+
+    // Call gamelogic function on bankrollerside
+    const dealerRes = await this._dealer.callPlay(
+      userBet,
+      gameData,
+      rndOpts,
+      seed,
+      this.channelState.getSession(),
+      // sign msg
+      await this._params.Eth.signHash(rndHash)
+    )
+
+    // check our random hash, dealer sign
+    if (!this.pRsa.verify(rndHash, dealerRes.rnd.sig)) {
+      throw new Error("Invalid random sig")
+      // this.openDisputeUI()
+    }
+
+    // Check than random created from this sig
+    if (dealerRes.rnd.res !== sha3(dealerRes.rnd.sig)) {
+      throw new Error("Invalid random, not from sig")
+      // this.openDisputeUI()
+      return
+    }
+
+    // generate randoms
+    const rndNum = this._params.Eth.numFromHash(
+      dealerRes.rnd.res,
+      rndOpts[0][0],
+      rndOpts[0][1]
+    )
+    const randoms = [rndNum]
+
+    // Call gamelogic function on player side
+    const profit = this._gameLogic.play(userBet, gameData, randoms)
+
+    if (profit !== dealerRes.profit) {
+      this.openDisputeUI()
+    }
+
+    // Create our channel state
+    const state = this.channelState.createState(
+      1 * bet2dec(userBet),
+      1 * bet2dec(profit)
+    )
+
+    log.debug('dealerRes', dealerRes)
+    log.debug('profit', profit)
+    log.debug('player state', state)
+
+    // try add bankroller sign state
+    this.channelState.confirmState(dealerRes.state, this.channelState.bankrollerOpenkey)
+    
+    // Send our signed state to dealer
+    // dealerRes.state
+    const confirmed = await this._dealer.confirmState(state)
+
+    return profit
+  }
+
   async disconnect() {
     /**
      * Get player address and last state for close
      * channel and create structure for sign last state
      */
     const playerAddress = this._params.Eth.getAccount().address
-    const lastState = this.channelState.getState(playerAddress)
+    const lastState = this.channelState.getState()
     const closeChannelData: SolidityTypeValue[] = [
       { t: "bytes32", v: lastState._id },
       { t: "uint256", v: "" + lastState._playerBalance },
@@ -285,11 +372,12 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
       { t: "uint256", v: "" + lastState._session },
       { t: "bool", v: true }
     ]
+    const closeChannelDataHash = sha3(...closeChannelData)
     /**
      * Sign last state for close channel and request to
-     * consent close channel bankroller 
+     * consent close channel bankroller
      */
-    const signLastState = this._params.Eth.signHash(closeChannelData)
+    const signLastState = this._params.Eth.signHash(closeChannelDataHash)
     const {
       consentSignature,
       bankrollerAddress
@@ -299,7 +387,10 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
      * if recover open key not equal bankroller address
      * throw error
      */
-    const recoverOpenkey = this._params.Eth.recover(closeChannelData, consentSignature)
+    const recoverOpenkey = this._params.Eth.recover(
+      closeChannelDataHash,
+      consentSignature
+    )
     if (recoverOpenkey.toLowerCase() !== bankrollerAddress.toLowerCase()) {
       throw new Error("Invalid signature")
     }
@@ -309,7 +400,10 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
     return { ...lastState }
   }
 
-  async closeChannel(params: CloseChannelParams, paramsSignature: string): Promise<any | Error> {
+  async closeChannel(
+    params: CloseChannelParams,
+    paramsSignature: string
+  ): Promise<any> {
     /** Generate params for close channel with method params */
     const closeParams = [
       params._id,
@@ -322,7 +416,7 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
     ]
 
     try {
-      log.debug(`start openChannel transaction`)
+      log.debug(`start close transaction`)
       const closeChannelTX = await this._params.Eth.sendTransaction(
         this._params.payChannelContract,
         "closeByConsent",
@@ -336,15 +430,27 @@ export default class DAppPlayerInstance extends EventEmitter implements IDAppPla
        */
       if (closeChannelTX.status) {
         const checkChannel = await this._dealer.checkCloseChannel()
-        if (checkChannel.state === '2') {
-          this.payChannelLogic = null
+        if (checkChannel.state === "2") {
           this.channelState = null
-          this.emit("info", {event: 'Channel closed'})
+          this.emit("info", { event: "Channel closed" })
           return { ...checkChannel }
         }
       }
     } catch (error) {
       throw error
+    }
+  }
+
+  openDisputeUI() {
+    const dialog = msg => {
+      return confirm(msg) || log.info(msg)
+    }
+    if (dialog("Open dispute?")) {
+    }
+    if (dialog("Close channel with last state?")) {
+    }
+
+    if (dialog("Do nothing?")) {
     }
   }
 }
