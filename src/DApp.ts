@@ -1,7 +1,6 @@
 import { IDApp, DAppParams, UserId, GameInfo } from "./interfaces/index"
 
 import { Logger } from "dc-logging"
-import { config } from "dc-configs"
 import Contract from "web3/eth/contract"
 import { setInterval } from "timers"
 import { EventEmitter } from "events"
