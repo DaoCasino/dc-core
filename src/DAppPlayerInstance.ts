@@ -22,7 +22,7 @@ import {
 
 import { Logger } from "dc-logging"
 import { config } from "dc-configs"
-import { ChannelState } from "./ChannelState"
+import { ChannelState, State } from "./ChannelState"
 import { EventEmitter } from "events"
 import { Rsa } from "./Rsa"
 
@@ -131,7 +131,8 @@ export class DAppPlayerInstance extends EventEmitter
       { t: "uint", v: "" + args.playerDeposit },
       { t: "uint", v: args.gameData }
     ]
-    const argsSignature: string = this._params.Eth.signHash(argsToSign)
+
+    const argsSignature: string = this._params.Eth.signData(argsToSign)
 
     /**
      * Request to dealer args to
@@ -205,7 +206,7 @@ export class DAppPlayerInstance extends EventEmitter
       { t: "bytes", v: peerResponse.e }
     ]
     const recoverOpenkey: string = this._params.Eth.recover(
-      toRecover,
+      sha3(...toRecover),
       signature
     )
     if (
@@ -262,10 +263,13 @@ export class DAppPlayerInstance extends EventEmitter
             this._params.Eth,
             params.channelId,
             this._params.userId,
+            params.bankrollerAddress,
             +params.playerDepositWei,
-            +params.bankrollerDepositWei
+            +params.bankrollerDepositWei,
+
+            this._params.Eth.getAccount().address // owner
           )
-          this.channelState.saveState(params.playerAddress)
+          this.channelState.createState(0,0)
 
           return { ...checkChannel }
         }
@@ -329,16 +333,26 @@ export class DAppPlayerInstance extends EventEmitter
     // Call gamelogic function on player side
     const profit = this._gameLogic.play(userBet, gameData, randoms)
 
-    // TODO: check results
     if (profit !== dealerRes.profit) {
       this.openDisputeUI()
     }
 
-    this.channelState._addTotalBet(1 * bet2dec(profit))
-    this.channelState._addTX(1 * bet2dec(userBet))
+    // Create our channel state
+    const state = this.channelState.createState(
+      1 * bet2dec(userBet),
+      1 * bet2dec(profit)
+    )
 
-    // Сохраняем стейт от банкроллера
-    // this.channelState.addDealerSigned(dealerRes.state)
+    log.debug('dealerRes', dealerRes)
+    log.debug('profit', profit)
+    log.debug('player state', state)
+
+    // try add bankroller sign state
+    this.channelState.confirmState(dealerRes.state, this.channelState.bankrollerOpenkey)
+    
+    // Send our signed state to dealer
+    // dealerRes.state
+    const confirmed = await this._dealer.confirmState(state)
 
     return { profit, randoms }
   }
@@ -349,7 +363,7 @@ export class DAppPlayerInstance extends EventEmitter
      * channel and create structure for sign last state
      */
     const playerAddress = this._params.Eth.getAccount().address
-    const lastState = this.channelState.getState(playerAddress)
+    const lastState = this.channelState.getState()
     const closeChannelData: SolidityTypeValue[] = [
       { t: "bytes32", v: lastState._id },
       { t: "uint256", v: "" + lastState._playerBalance },
@@ -358,11 +372,12 @@ export class DAppPlayerInstance extends EventEmitter
       { t: "uint256", v: "" + lastState._session },
       { t: "bool", v: true }
     ]
+    const closeChannelDataHash = sha3(...closeChannelData)
     /**
      * Sign last state for close channel and request to
      * consent close channel bankroller
      */
-    const signLastState = this._params.Eth.signHash(closeChannelData)
+    const signLastState = this._params.Eth.signHash(closeChannelDataHash)
     const {
       consentSignature,
       bankrollerAddress
@@ -373,7 +388,7 @@ export class DAppPlayerInstance extends EventEmitter
      * throw error
      */
     const recoverOpenkey = this._params.Eth.recover(
-      closeChannelData,
+      closeChannelDataHash,
       consentSignature
     )
     if (recoverOpenkey.toLowerCase() !== bankrollerAddress.toLowerCase()) {
@@ -401,7 +416,7 @@ export class DAppPlayerInstance extends EventEmitter
     ]
 
     try {
-      log.debug(`start openChannel transaction`)
+      log.debug(`start close transaction`)
       const closeChannelTX = await this._params.Eth.sendTransaction(
         this._params.payChannelContract,
         "closeByConsent",
