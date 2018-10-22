@@ -1,6 +1,6 @@
 import {
-  Rsa,
   IRsa,
+  Rnd,
   IGameLogic,
   ConnectParams,
   ConsentResult,
@@ -23,9 +23,9 @@ import {
 
 import { Logger } from "dc-logging"
 import { config } from "dc-configs"
-import { ChannelState } from "./ChannelState"
+import { ChannelState, State } from "./ChannelState"
 import { EventEmitter } from "events"
-
+import { Rsa } from "./Rsa"
 const log = new Logger("DealerInstance")
 
 export class DAppDealerInstance extends EventEmitter
@@ -70,7 +70,12 @@ export class DAppDealerInstance extends EventEmitter
       true
     )
   }
-
+  /**
+   * Create structure for recover
+   * and recover openkey with structure and signature
+   * if recover open key not equal player address
+   * throw error
+   */
   async getOpenChannelData(
     params: GetChannelDataParams,
     paramsSignature: string
@@ -78,19 +83,13 @@ export class DAppDealerInstance extends EventEmitter
     /** Parse params */
     const { channelId, playerAddress, playerDeposit, gameData } = params
 
-    /**
-     * Create structure for recover
-     * and recover openkey with structure and signature
-     * if recover open key not equal player address
-     * throw error
-     */
     const toRecover: SolidityTypeValue[] = [
       { t: "bytes32", v: channelId },
       { t: "address", v: playerAddress },
       { t: "uint", v: "" + playerDeposit },
       { t: "uint", v: gameData }
     ]
-    const recoverOpenkey = this._params.Eth.recover(toRecover, paramsSignature)
+    const recoverOpenkey = this._params.Eth.recover(sha3(...toRecover), paramsSignature)
     if (recoverOpenkey.toLowerCase() !== playerAddress.toLowerCase()) {
       throw new Error("Invalid signature")
     }
@@ -138,7 +137,7 @@ export class DAppDealerInstance extends EventEmitter
       ]
 
       /** Sign args for open channel */
-      const signature = this._params.Eth.signHash(toSign)
+      const signature = this._params.Eth.signData(toSign)
       return { response, signature }
     } catch (error) {
       throw error
@@ -167,10 +166,13 @@ export class DAppDealerInstance extends EventEmitter
         this._params.Eth,
         this.channelId,
         this._params.userId,
+        this._params.Eth.getAccount().address,
         channel.playerBalance,
-        channel.bankrollerBalance
+        channel.bankrollerBalance,
+        
+        this._params.Eth.getAccount().address // owner
       )
-      this.channelState.saveState(bankrollerAddress)
+      this.channelState.createState(0,0)
 
       this.emit("info", {
         event: "OpenChannel checked",
@@ -187,17 +189,20 @@ export class DAppDealerInstance extends EventEmitter
     }
   }
 
+  /*
+    Call game logic function and return result to player
+   */
+
   async callPlay(
     userBet: number,
     gameData: any,
+    rndOpts: Rnd["opts"],
     seed: string,
     session: number,
     sign: string
   ) {
     const userBetWei = bet2dec(userBet)
-    const lastState = this.channelState.getState(
-      this._params.Eth.getAccount().address
-    )
+    const lastState = this.channelState.getState()
     const curSession = this.channelState.getSession()
 
     // check session
@@ -205,73 +210,77 @@ export class DAppDealerInstance extends EventEmitter
       throw new Error("incorrect session user:" + session + "!=" + curSession)
     }
 
-    // Проверяем нет ли неподписанных юзером предыдущих состояний
-    if (lastState._session > 0 && this.channelState.hasUnconfirmed()) {
+    // Check prev channel states from user
+    if (this.channelState.hasUnconfirmed(this.playerAddress)) {
       throw new Error(
         "Player " + this.playerAddress + " not confirm previous channel state"
       )
     }
 
-    // Проверяем что юзера достаточно бетов для этой ставки
+    // enough bets ?
     if (lastState._playerBalance < 1 * userBetWei) {
       throw new Error(
-        `Player ' + this.playerAddress + ' not enougth money for this bet, balance ${
+        `Player ${this.playerAddress} not enougth money for this bet, balance ${
           lastState._playerBalance
         } < ${userBet}`
       )
     }
 
-    // проверка подписи
-    const toVerifyHash: SolidityTypeValue[] = [
+    // msg data for hashing by sha3
+    // for check sig and random genrate
+    const msgData: SolidityTypeValue[] = [
       { t: "bytes32", v: lastState._id },
       { t: "uint", v: curSession },
       { t: "uint", v: "" + userBetWei },
       { t: "uint", v: gameData },
       { t: "bytes32", v: seed }
     ]
-    const recoverOpenkey = this._params.Eth.recover(sha3(...toVerifyHash), sign)
+    const msgHash = sha3(...msgData)
+
+    // Check msg data signature
+    const recoverOpenkey = this._params.Eth.recover(msgHash, sign)
     if (recoverOpenkey.toLowerCase() !== this.playerAddress.toLowerCase()) {
       throw new Error("Invalid signature")
     }
 
-    // Подписываем/генерируем рандом
-    const rndHashArgs = [
-      { t: "bytes32", v: lastState._id },
-      { t: "uint", v: curSession },
-      { t: "uint", v: "" + userBetWei },
-      { t: "uint", v: gameData },
-      { t: "bytes32", v: seed }
+    //
+    // Generate random
+    //
+    const rnd: Rnd = {
+      opts: rndOpts,
+      hash: msgHash,
+      sig: this.Rsa.sign(msgHash).toString(),
+      res: ""
+    }
+    rnd.res = sha3(rnd.sig)
+    // @TODO : generate many randoms by rndOpts
+    const randoms = [
+      this._params.Eth.numFromHash(rnd.res, rnd.opts[0][0], rnd.opts[0][1])
     ]
 
-    const rndHash = sha3(...rndHashArgs)
-    const rndSign = this.Rsa.sign(rndHash)
-
-    // TODO : generate rnds by params
-    const rndNum = this._params.Eth.numFromHash(rndHash)
-    const randoms = [rndNum]
+    // Call game logic functions with generated randoms
     const profit = this._gameLogic.play(userBet, gameData, randoms)
 
-    // Меняем баланс в канале
-    this.channelState._addTX(1 * bet2dec(profit))
-    this.channelState._addTotalBet(1 * userBetWei)
-
-    // Сохраняем подписанный нами последний стейт канала
-    const state = this.channelState.saveState(
-      this._params.Eth.getAccount().address
+    // Change balances on channel state
+    const state = this.channelState.createState(
+      1 * userBetWei,
+      1 * bet2dec(profit)
     )
 
-    return {
-      state,
-      profit,
-      randoms,
-      randomSignature: rndSign
-    }
+    // piu-piu-piu
+    // the casino never loses ;)
+    return { state, profit, randoms, rnd }
+  }
+
+  confirmState(state:State){
+    const stateFromPlayerConfirmed = this.channelState.confirmState(state, this.playerAddress)
+    return stateFromPlayerConfirmed
   }
 
   consentCloseChannel(stateSignature: string): ConsentResult {
     /** Get bankroller Address and last state for close channel */
     const bankrollerAddress = this._params.Eth.getAccount().address
-    const lastState = this.channelState.getState(bankrollerAddress)
+    const lastState = this.channelState.getState()
 
     /** create structure for recover signature */
     const consentData: SolidityTypeValue[] = [
@@ -279,22 +288,22 @@ export class DAppDealerInstance extends EventEmitter
       { t: "uint", v: "" + lastState._playerBalance },
       { t: "uint", v: "" + lastState._bankrollerBalance },
       { t: "uint", v: "" + lastState._totalBet },
-      { t: "uint", v: lastState._session },
+      { t: "uint", v: "" + lastState._session },
       { t: "bool", v: true }
     ]
-
+    const consentHash = sha3(...consentData)
     /**
      * Recover address with signature and params
      * if recover open key not equal player address
      * then throw error
      */
-    const recoverOpenkey = this._params.Eth.recover(consentData, stateSignature)
+    const recoverOpenkey = this._params.Eth.recover(consentHash, stateSignature)
     if (recoverOpenkey.toLowerCase() !== this.playerAddress.toLowerCase()) {
       throw new Error("Invalid signature")
     }
 
     /** Sign and return consent structure */
-    const consentSignature = this._params.Eth.signHash(consentData)
+    const consentSignature = this._params.Eth.signHash(consentHash)
     return { consentSignature, bankrollerAddress }
   }
 

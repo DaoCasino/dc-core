@@ -2,7 +2,9 @@ import { IMessagingProvider } from "dc-messaging"
 import { Eth } from "dc-ethereum-utils"
 import Contract from "web3/eth/contract"
 import { GameInfo } from "./GameInfo"
+import { State } from "../ChannelState"
 import { IGameLogic } from "./GameLogic"
+import { Rnd } from "./Rnd"
 
 export type UserId = string
 
@@ -20,15 +22,21 @@ export interface DAppInstanceParams {
   Eth: Eth
 }
 
-export interface ConnectParams {
-  playerDeposit: number
-  gameData: any
-}
-export interface GetChannelDataParams extends ConnectParams {
+export interface DAppInstanceView {
+  deposit: number
+  playerBalance: number
+  bankrollerBalance: number
+  profit: number
   playerAddress: string
-  channelId: string
+}
+export interface IDAppInstance {
+  on(event: string, func: (data: any) => void)
+  start(): Promise<void> | void
 }
 
+/*
+ * Client 
+ */
 export interface OpenChannelParams {
   channelId: string
   playerAddress: string
@@ -40,10 +48,56 @@ export interface OpenChannelParams {
   n: string
   e: string
 }
+export interface ConnectParams {
+  playerDeposit: number
+  gameData: any
+}
+export interface GetChannelDataParams extends ConnectParams {
+  playerAddress: string
+  channelId: string
+}
 
-export interface ConsentResult {
-  consentSignature: string
-  bankrollerAddress: string
+export interface PlayParams {
+  userBet: number
+  gameData: any
+  rndOpts: Rnd["opts"]
+}
+
+interface PeerBalance {
+  bankroller: number
+  player: number
+}
+export interface ChannelStateData {
+  deposits: PeerBalance
+  balance: PeerBalance
+  profit: PeerBalance
+}
+
+export interface IDAppPlayerInstance extends IDAppInstance {
+  // find bankroller in p2p network and "connect"
+  connect(connectData: ConnectParams): Promise<any>
+  // send open channel TX on game contract (oneStepGame.sol)
+  openChannel(
+    openChannelData: OpenChannelParams,
+    signature: string
+  ): Promise<any>
+  getChannelStateData: () => ChannelStateData
+  /*
+    Call game logic function on dealer side and client side
+    verify randoms and channelState
+    rndOpts - see callPlay returns params
+   */
+
+  play(params: PlayParams): Promise<{ profit: number; randoms: number[] }>
+
+  // Send close channel TX on game contract (oneStepGame.sol)
+  // ask dealer to sign data for close by consent and send TX
+  closeChannel(
+    closeParams: CloseChannelParams,
+    paramsSignature: string
+  ): Promise<any>
+
+  disconnect()
 }
 
 export interface CloseChannelParams {
@@ -52,98 +106,47 @@ export interface CloseChannelParams {
   _bankrollerBalance: number
   _totalBet: number
   _session: number
-  _consent: boolean
 }
 
-export interface SignedResponse<TResponse> {
-  response: TResponse
-  signature: string
-}
-
-export interface DAppInstanceView {
-  deposit: number
-  playerBalance: number
-  bankrollerBalance: number
-  profit: number
-  playerAddress: string
-}
-
-export interface RndData {
-  // options for random numbers
-  // ex.: [[0,10],[50,100]] - get 2 random numbers, 
-  // first from 0 to 10, and second from 50 to 100
-  opts : number[][] , // num generate options
-  hash : string     , // hash from rnd args
-  sig  : string     , // RSA signed @hash
-  res  : string     , // sha3 hash of @sig
-}
-
-export interface PlayParams {
-  userBet: number
-  gameData: number[]
-  rndOpts: RndData['opts']
-}
-
-export interface IDAppInstance {
-  on(event: string, func: (data: any) => void)
-  start(): Promise<void> | void
-}
-
-export interface IDAppPlayerInstance extends IDAppInstance {
-  connect(connectData: ConnectParams): Promise<any>
-  openChannel(
-    openChannelData: OpenChannelParams,
-    signature: string
-  ): Promise<any>
-  play(data: { userBet: number; gameData: any }): Promise<number>
-  closeChannel(
-    closeParams: CloseChannelParams,
-    paramsSignature: string
-  ): Promise<any>
-  disconnect()
-}
-
+/*
+ * Dealer / bankroller 
+ */
 export interface IDAppDealerInstance extends IDAppInstance {
   getOpenChannelData(
     data: ConnectParams,
     signature: string
   ): Promise<SignedResponse<OpenChannelParams>>
+
   checkOpenChannel(): Promise<any | Error>
+
+  /*
+    Call game logic function on dealer side
+   */
   callPlay(
-    userBet: number,
-    gameData: any,
-    seed: string,
-    session: number,
-    sign: string
+    userBet: number, // humanreadable format token value 1 = 1 * 10**18
+    gameData: any, // specified data for game
+    rndOpts: Rnd["opts"], // options for generate numbers
+    seed: string, // some entropy from client / random hex hash
+    session: number, // aka nonce, every call session++ on channelState
+    sign: string // ETHsign of sended data / previous args
   ): Promise<{
-    profit: number
-    randoms: number[]
-    randomSignature: string | Buffer
-    state: any
+    profit: number // result of call game function
+    randoms: number[] // randoms arg applied to gamelogic function
+    state: any // bankroller signed channel state
+    rnd: Rnd // random params for verify on client side
   }>
+  confirmState(state:State):boolean
   consentCloseChannel(stateSignature: string): ConsentResult
+
   checkCloseChannel(): Promise<any | Error>
 }
-export interface IDAppInstanceOld {
-  on(event: string, func: (data: any) => void)
-  getOpenChannelData: (
-    data: ConnectParams,
-    signature: string
-  ) => Promise<SignedResponse<OpenChannelParams>>
-  checkOpenChannel: () => Promise<any>
-  updateState: (data: { state: any }) => { status: string }
-  closeChannel(): Promise<any>
-  consentCloseChannel(signLastState: string): any
-  // closeByConsent: (data: any) => { sign: string };
-  checkCloseChannel: (data: any) => void
-  call: (
-    data: any
-  ) => Promise<{
-    signature: string
-    randomHash: string
-    gameLogicCallResult: any
-  }>
-  reconnect: (data: any) => void
-  // closeTimeout(); WTF???
-  disconnect: (data: any) => void
+
+export interface ConsentResult {
+  consentSignature: string
+  bankrollerAddress: string
+}
+
+export interface SignedResponse<TResponse> {
+  response: TResponse
+  signature: string
 }

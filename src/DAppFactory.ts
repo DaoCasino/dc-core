@@ -1,24 +1,7 @@
-import {
-  OpenChannelParams,
-  SignedResponse,
-  DAppInstanceParams,
-  IDAppPlayerInstance,
-  IDAppDealerInstance,
-  IRsa,
-  Rsa,
-  IGameLogic,
-  GetChannelDataParams
-} from "./interfaces/index"
 
-import { ChannelState } from "./ChannelState"
-import {
-  sha3,
-  dec2bet,
-  makeSeed,
-  bet2dec,
-  SolidityTypeValue,
-  Eth
-} from "dc-ethereum-utils"
+import { IGameLogic } from "./interfaces/index"
+
+import { Eth } from "dc-ethereum-utils"
 import { Logger } from "dc-logging"
 
 import { config, ContractInfo, BlockchainNetwork, IConfig } from "dc-configs"
