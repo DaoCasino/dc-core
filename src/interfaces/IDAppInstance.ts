@@ -63,6 +63,16 @@ export interface PlayParams {
   rndOpts: Rnd["opts"]
 }
 
+interface PeerBalance {
+  bankroller: number
+  player: number
+}
+export interface ChannelStateData {
+  deposits: PeerBalance
+  balance: PeerBalance
+  profit: PeerBalance
+}
+
 export interface IDAppPlayerInstance extends IDAppInstance {
   // find bankroller in p2p network and "connect"
   connect(connectData: ConnectParams): Promise<any>
@@ -71,7 +81,7 @@ export interface IDAppPlayerInstance extends IDAppInstance {
     openChannelData: OpenChannelParams,
     signature: string
   ): Promise<any>
-
+  getChannelStateData: () => ChannelStateData
   /*
     Call game logic function on dealer side and client side
     verify randoms and channelState
