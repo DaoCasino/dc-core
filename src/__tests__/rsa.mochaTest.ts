@@ -4,8 +4,11 @@ import crypto from "crypto"
 import { Rsa } from "../Rsa"
 
 import { SolidityTypeValue, sha3, remove0x } from "dc-ethereum-utils"
+import { Logger } from "dc-logging"
 
-const suite = describe("Rsa Tests", () => {
+const log = new Logger("PingService test")
+
+describe("Rsa Tests", () => {
   it("Verify", async () => {
     const fullRsa = new Rsa()
     const ne = fullRsa.getNE()
