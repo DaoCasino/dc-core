@@ -2,6 +2,7 @@ import { IMessagingProvider } from "dc-messaging"
 import { Eth } from "dc-ethereum-utils"
 import Contract from "web3/eth/contract"
 import { GameInfo } from "./GameInfo"
+import { State } from "../ChannelState"
 import { IGameLogic } from "./GameLogic"
 import { Rnd } from "./Rnd"
 
@@ -62,6 +63,16 @@ export interface PlayParams {
   rndOpts: Rnd["opts"]
 }
 
+interface PeerBalance {
+  bankroller: number
+  player: number
+}
+export interface ChannelStateData {
+  deposits: PeerBalance
+  balance: PeerBalance
+  profit: PeerBalance
+}
+
 export interface IDAppPlayerInstance extends IDAppInstance {
   // find bankroller in p2p network and "connect"
   connect(connectData: ConnectParams): Promise<any>
@@ -70,7 +81,7 @@ export interface IDAppPlayerInstance extends IDAppInstance {
     openChannelData: OpenChannelParams,
     signature: string
   ): Promise<any>
-
+  getChannelStateData: () => ChannelStateData
   /*
     Call game logic function on dealer side and client side
     verify randoms and channelState
@@ -95,7 +106,6 @@ export interface CloseChannelParams {
   _bankrollerBalance: number
   _totalBet: number
   _session: number
-  _consent: boolean
 }
 
 /*
@@ -125,7 +135,7 @@ export interface IDAppDealerInstance extends IDAppInstance {
     state: any // bankroller signed channel state
     rnd: Rnd // random params for verify on client side
   }>
-
+  confirmState(state:State):boolean
   consentCloseChannel(stateSignature: string): ConsentResult
 
   checkCloseChannel(): Promise<any | Error>
