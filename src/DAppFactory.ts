@@ -1,4 +1,3 @@
-
 import { IGameLogic } from "./interfaces/index"
 
 import { Eth } from "dc-ethereum-utils"
@@ -46,7 +45,8 @@ export class DAppFactory {
     rules: any
   }): Promise<DApp> {
     const { name, gameLogicFunction, contract, rules, gameEth } = params
-    const { platformId, blockchainNetwork } = this._configuration
+    const { platformId, blockchainNetwork, privateKey } = this._configuration
+    await this.eth.initAccount(privateKey)
     const dappParams = {
       slug: name,
       platformId,
@@ -68,6 +68,7 @@ export class DAppFactory {
     rules: any
   }): Promise<DAppPlayerInstance> {
     const dapp = await this.create(params)
+
     const dappInstance = await dapp.startClient()
     return dappInstance
   }
@@ -78,10 +79,6 @@ export class DAppFactory {
     contract: ContractInfo
     rules: any
   }): Promise<void> {
-    const { privateKey } = config
-    await this.eth.initAccount(privateKey)
-    await this.eth.saveWallet('1234', privateKey)
-
     const dapp = await this.create(params)
     const dappInstance = await dapp.startServer()
     return dappInstance
