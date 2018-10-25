@@ -23,6 +23,7 @@ interface ReadyInfo {
   address: string
 }
 const SERVER_APPROVE_AMOUNT = 100000000
+const SERVER_APPROVE_MINAMOUNT = 10000000
 
 interface IGameInfoRoom {
   on: (event: "ready", callback: (info: ReadyInfo) => void) => void
@@ -163,7 +164,8 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
     )
     await this._params.Eth.ERC20ApproveSafe(
       this._payChannelContractAddress,
-      SERVER_APPROVE_AMOUNT
+      SERVER_APPROVE_AMOUNT,
+      SERVER_APPROVE_MINAMOUNT
     )
     return this._startSendingBeacon(3000)
   }
