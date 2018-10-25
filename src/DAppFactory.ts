@@ -16,7 +16,7 @@ export class DAppFactory {
   private _configuration: IConfig
   constructor(
     transportProvider: IMessagingProvider,
-    configuration: IConfig = config
+    configuration: IConfig = config.default
   ) {
     const {
       gasPrice: price,
