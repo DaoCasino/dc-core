@@ -1,4 +1,4 @@
-import { Eth, sha3, SolidityTypeValue } from "dc-ethereum-utils"
+import { Eth, ETHInstance, sha3, SolidityTypeValue } from "dc-ethereum-utils"
 
 import { Logger } from "dc-logging"
 const log = new Logger("tests")
@@ -18,7 +18,7 @@ export interface State {
 
 export class ChannelState {
   private _id: string // channel id
-  private Eth: Eth
+  private Eth: ETHInstance
   private _session: number = 0 // aka nonce
   private _totalBet = 0
   private _profit = 0
@@ -40,7 +40,7 @@ export class ChannelState {
   }
 
   constructor(
-    eth: Eth,
+    eth: ETHInstance,
     channelId: string,
     playerOpenkey: string,
     bankrollerOpenkey: string,
