@@ -45,7 +45,7 @@ export class DAppPlayerInstance extends EventEmitter
   constructor(params: DAppInstanceParams) {
     super()
     this._params = params
-    this._config = config
+    this._config = config.default
     this._gameLogic = this._params.gameLogicFunction()
     this.playerAddress = this._params.Eth.getAccount().address
     this.pRsa = new Rsa(null)
@@ -181,7 +181,7 @@ export class DAppPlayerInstance extends EventEmitter
       this._params.payChannelContractAddress,
       peerResponse.bankrollerAddress
     )
-    if (dec2bet(bankrollerAllowance) < bankrollerDeposit) {
+    if (bankrollerAllowance < bankrollerDeposit) {
       throw new Error(`
         Bankroller allowance too low ${bankrollerAllowance},
         for deposit ${bankrollerDeposit}
@@ -274,7 +274,7 @@ export class DAppPlayerInstance extends EventEmitter
             +params.bankrollerDepositWei,
             this._params.Eth.getAccount().address // owner
           )
-          this.channelState.createState(0,0)
+          this.channelState.createState(0, 0)
 
           return { ...checkChannel }
         }
@@ -348,13 +348,16 @@ export class DAppPlayerInstance extends EventEmitter
       1 * bet2dec(profit)
     )
 
-    log.debug('dealerRes', dealerRes)
-    log.debug('profit', profit)
-    log.debug('player state', state)
+    log.debug("dealerRes", dealerRes)
+    log.debug("profit", profit)
+    log.debug("player state", state)
 
     // try add bankroller sign state
-    this.channelState.confirmState(dealerRes.state, this.channelState.bankrollerOpenkey)
-    
+    this.channelState.confirmState(
+      dealerRes.state,
+      this.channelState.bankrollerOpenkey
+    )
+
     // Send our signed state to dealer
     // dealerRes.state
     const confirmed = await this._dealer.confirmState(state)
@@ -371,10 +374,10 @@ export class DAppPlayerInstance extends EventEmitter
     const lastState = this.channelState.getState()
     const closeChannelData: SolidityTypeValue[] = [
       { t: "bytes32", v: lastState._id },
-      { t: "uint", v: '' + lastState._playerBalance },
-      { t: "uint", v: '' + lastState._bankrollerBalance },
-      { t: "uint", v: '' + lastState._totalBet },
-      { t: "uint", v: '' + lastState._session },
+      { t: "uint", v: "" + lastState._playerBalance },
+      { t: "uint", v: "" + lastState._bankrollerBalance },
+      { t: "uint", v: "" + lastState._totalBet },
+      { t: "uint", v: "" + lastState._session },
       { t: "bool", v: true }
     ]
     const closeChannelDataHash = sha3(...closeChannelData)
@@ -400,8 +403,6 @@ export class DAppPlayerInstance extends EventEmitter
       throw new Error("Invalid signature")
     }
 
-
-
     /** Send close channel transaction */
     const closeChannelTX = await this.closeChannel(lastState, consentSignature)
     return { ...lastState, ...closeChannelTX }
@@ -414,10 +415,10 @@ export class DAppPlayerInstance extends EventEmitter
     /** Generate params for close channel with method params */
     const closeParams = [
       params._id,
-      '' + params._playerBalance,
-      '' + params._bankrollerBalance,
-      '' + params._totalBet,
-      '' + params._session,
+      "" + params._playerBalance,
+      "" + params._bankrollerBalance,
+      "" + params._totalBet,
+      "" + params._session,
       true,
       paramsSignature
     ]

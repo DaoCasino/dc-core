@@ -48,7 +48,7 @@ export class DAppDealerInstance extends EventEmitter
   constructor(params: DAppInstanceParams) {
     super()
     this._params = params
-    this._config = config
+    this._config = config.default
     this._gameLogic = this._params.gameLogicFunction()
 
     this.Rsa = new Rsa()
