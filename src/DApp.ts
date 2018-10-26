@@ -120,12 +120,15 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
   async _chooseServer(
     readyServers: Map<string, ReadyInfo>
   ): Promise<DAppPlayerInstance | null> {
+    const self = this
     if (this.dappInstance) return this.dappInstance
-
     const theChosen = Array.from(readyServers.values())
-      .filter(readyServer => readyServer.deposit)
-      .sort((a, b) => a.deposit - b.deposit)[0]
-
+      .filter(readyServer => {
+        return readyServer.deposit
+      })
+      .sort((a, b) => {
+        return a.deposit - b.deposit[0]
+      })
     // TODO: should be some more complicated alg
 
     if (theChosen) {
@@ -147,12 +150,18 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
         gameInfo: this._gameInfo,
         Eth: this._params.Eth
       })
-
+      this.dappInstance.on("info", data => {
+        self.emit("dapp::status", {
+          message: "dapp instance message",
+          data
+        })
+      })
       await this.dappInstance.start()
+
       return this.dappInstance
     }
-
-    log.debug("Server not chosen")
+    self.emit("dapp::status", { message: "Server not chosen", data: {} })
+    log.debug("Server not choosen")
     return null
   }
 
