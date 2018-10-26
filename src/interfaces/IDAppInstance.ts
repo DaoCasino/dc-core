@@ -1,5 +1,5 @@
 import { IMessagingProvider } from "dc-messaging"
-import { Eth } from "dc-ethereum-utils"
+import { ETHInstance } from "dc-ethereum-utils"
 import Contract from "web3/eth/contract"
 import { GameInfo } from "./GameInfo"
 import { State } from "../ChannelState"
@@ -19,7 +19,7 @@ export interface DAppInstanceParams {
   roomProvider: IMessagingProvider
   onFinish: (userId: UserId) => void
   gameInfo: GameInfo
-  Eth: Eth
+  Eth: ETHInstance
 }
 
 export interface DAppInstanceView {

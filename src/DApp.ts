@@ -23,6 +23,7 @@ interface ReadyInfo {
   address: string
 }
 const SERVER_APPROVE_AMOUNT = 100000000
+const SERVER_APPROVE_MINAMOUNT = 10000000
 
 interface IGameInfoRoom {
   on: (event: "ready", callback: (info: ReadyInfo) => void) => void
@@ -119,12 +120,15 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
   async _chooseServer(
     readyServers: Map<string, ReadyInfo>
   ): Promise<DAppPlayerInstance | null> {
+    const self = this
     if (this.dappInstance) return this.dappInstance
-
     const theChosen = Array.from(readyServers.values())
-      .filter(readyServer => readyServer.deposit)
-      .sort((a, b) => a.deposit - b.deposit)[0]
-
+      .filter(readyServer => {
+        return readyServer.deposit
+      })
+      .sort((a, b) => {
+        return a.deposit - b.deposit[0]
+      })
     // TODO: should be some more complicated alg
 
     if (theChosen) {
@@ -146,12 +150,18 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
         gameInfo: this._gameInfo,
         Eth: this._params.Eth
       })
-
+      this.dappInstance.on("info", data => {
+        self.emit("dapp::status", {
+          message: "dapp instance message",
+          data
+        })
+      })
       await this.dappInstance.start()
+
       return this.dappInstance
     }
-
-    log.debug("Server not chosen")
+    self.emit("dapp::status", { message: "Server not chosen", data: {} })
+    log.debug("Server not choosen")
     return null
   }
 
@@ -163,7 +173,8 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
     )
     await this._params.Eth.ERC20ApproveSafe(
       this._payChannelContractAddress,
-      SERVER_APPROVE_AMOUNT
+      SERVER_APPROVE_AMOUNT,
+      SERVER_APPROVE_MINAMOUNT
     )
     return this._startSendingBeacon(3000)
   }

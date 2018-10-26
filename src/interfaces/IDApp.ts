@@ -1,5 +1,5 @@
 import { IMessagingProvider } from "dc-messaging"
-import { Eth } from "dc-ethereum-utils"
+import { Eth, ETHInstance } from "dc-ethereum-utils"
 import { ContractInfo } from "dc-configs"
 import { IGameLogic, DAppInstanceView } from "./index"
 import { platform } from "os"
@@ -13,7 +13,7 @@ export interface DAppParams {
   gameLogicFunction: () => IGameLogic
   contract: ContractInfo
   roomProvider: IMessagingProvider
-  Eth: Eth
+  Eth: ETHInstance
 }
 
 export interface IDApp {
