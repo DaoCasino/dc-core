@@ -122,11 +122,13 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
   ): Promise<DAppPlayerInstance | null> {
     const self = this
     if (this.dappInstance) return this.dappInstance
-
     const theChosen = Array.from(readyServers.values())
-      .filter(readyServer => readyServer.deposit)
-      .sort((a, b) => a.deposit - b.deposit)[0]
-
+      .filter(readyServer => {
+        return readyServer.deposit
+      })
+      .sort((a, b) => {
+        return a.deposit - b.deposit[0]
+      })
     // TODO: should be some more complicated alg
 
     if (theChosen) {
