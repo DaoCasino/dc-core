@@ -18,21 +18,9 @@ export class DAppFactory {
     transportProvider: IMessagingProvider,
     configuration: IConfig = config.default
   ) {
-    const {
-      gasPrice: price,
-      gasLimit: limit,
-      web3HttpProviderUrl: httpProviderUrl,
-      contracts,
-      walletName
-    } = configuration
     this._configuration = configuration
     this._transportProvider = transportProvider
-    this.eth = new Eth({
-      walletName,
-      httpProviderUrl,
-      ERC20ContractInfo: contracts.ERC20,
-      gasParams: { price, limit }
-    })
+
     const globalStore: any = global || window
     globalStore.DCLib = new GlobalGameLogicStore()
   }
@@ -44,6 +32,19 @@ export class DAppFactory {
     gameEth?: Eth
     rules: any
   }): Promise<DApp> {
+    const {
+      gasPrice: price,
+      gasLimit: limit,
+      web3HttpProviderUrl: httpProviderUrl,
+      getContracts,
+      walletName
+    } = this._configuration
+    this.eth = new Eth({
+      walletName,
+      httpProviderUrl,
+      ERC20ContractInfo: (await getContracts()).ERC20,
+      gasParams: { price, limit }
+    })
     const { name, gameLogicFunction, contract, rules, gameEth } = params
     const { platformId, blockchainNetwork, privateKey } = this._configuration
     await this.eth.initAccount(privateKey)
