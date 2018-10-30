@@ -1,6 +1,6 @@
 {
   "name": "dc-core",
-  "version": "0.1.4",
+  "version": "0.1.6",
   "description": "DAO.Casino core library",
   "main": "./lib/index",
   "scripts": {
@@ -17,10 +17,10 @@
     "@types/node": "^10.11.7",
     "@types/web3": "^1.0.6",
     "chai": "^4.1.2",
-    "dc-configs": "^0.1.4",
-    "dc-ethereum-utils": "^0.1.4",
-    "dc-logging": "^0.1.4",
-    "dc-messaging": "^0.1.4",
+    "dc-configs": "^0.1.6",
+    "dc-ethereum-utils": "^0.1.6",
+    "dc-logging": "^0.1.6",
+    "dc-messaging": "^0.1.6",
     "mocha": "^3.2.0",
     "node-rsa": "^1.0.1",
     "web3": "1.0.0-beta.36"
