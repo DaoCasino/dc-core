@@ -121,8 +121,7 @@ export class ChannelState {
     return this._session
   }
 
-
-  _sha3state(stateData:State['data']){
+  _sha3state(stateData: State['data']) {
     const toHash: SolidityTypeValue[] = [
       { t: "bytes32", v: stateData._id },
       { t: "uint256", v: "" + stateData._playerBalance },
@@ -134,7 +133,7 @@ export class ChannelState {
     return sha3(...toHash)
   }
 
-  ourStateData():State['data']{
+  ourStateData(): State['data'] {
     return {
       _id: this._id,
       _playerBalance: this.balance.player,
@@ -144,7 +143,7 @@ export class ChannelState {
     }
   }
 
-  createState(bet:number, profit:number):State{
+  createState(bet: number, profit: number): State {
     // Change balances on channel state
     this._addTotalBet(bet)
     this._addTX(profit)
@@ -167,11 +166,11 @@ export class ChannelState {
     return this.state
   }
 
-  getState():State['data'] {
+  getState(): State['data'] {
     return this.state.data
   }
 
-  hasUnconfirmed(address:string) {
+  hasUnconfirmed(address: string) {
     if (this._session < 2) {
       return false
     }
@@ -209,7 +208,6 @@ export class ChannelState {
     this.state.signs[address] = ''+theirState.signs[address]
     return true
   }
-
 
   reset() {
     log.debug("PayChannel::reset, set deposit balance profit to 0")
