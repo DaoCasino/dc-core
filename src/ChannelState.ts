@@ -3,17 +3,16 @@ import { Eth, ETHInstance, sha3, SolidityTypeValue } from "dc-ethereum-utils"
 import { Logger } from "dc-logging"
 const log = new Logger("tests")
 
-
 export interface State {
   data: {
     _id: string
-    _playerBalance: number,
-    _bankrollerBalance: number,
-    _totalBet:number,
+    _playerBalance: number
+    _bankrollerBalance: number
+    _totalBet: number
     _session: number
   }
-  hash:string // sha3 hash of SolidityTypeValue data
-  signs:{}
+  hash: string // sha3 hash of SolidityTypeValue data
+  signs: {}
 }
 
 export class ChannelState {
@@ -23,7 +22,7 @@ export class ChannelState {
   private _totalBet = 0
   private _profit = 0
 
-  owner:string // instance owner
+  owner: string // instance owner
 
   state: State
 
@@ -46,7 +45,7 @@ export class ChannelState {
     bankrollerOpenkey: string,
     playerDeposit: number,
     bankrollerDeposit: number,
-    owner:string
+    owner: string
   ) {
     this.owner = owner
     this._id = channelId
@@ -75,10 +74,10 @@ export class ChannelState {
     this.balance.player = 1 * this.deposit.player
     this.balance.bankroller = 1 * this.deposit.bankroller
 
-    this.state= {
-      hash:'',
-      signs:{},
-      data:{
+    this.state = {
+      hash: "",
+      signs: {},
+      data: {
         _id: this._id,
         _playerBalance: this.balance.player,
         _bankrollerBalance: this.balance.bankroller,
@@ -104,11 +103,11 @@ export class ChannelState {
     return {
       deposits: {
         player: this.deposit.player,
-        bankroller: this.deposit.player
+        bankroller: this.deposit.bankroller
       },
       balance: {
         player: this.balance.player,
-        bankroller: this.balance.player
+        bankroller: this.balance.bankroller
       },
       profit: {
         player: this._profit,
@@ -121,8 +120,7 @@ export class ChannelState {
     return this._session
   }
 
-
-  _sha3state(stateData:State['data']){
+  _sha3state(stateData: State["data"]) {
     const toHash: SolidityTypeValue[] = [
       { t: "bytes32", v: stateData._id },
       { t: "uint256", v: "" + stateData._playerBalance },
@@ -134,7 +132,7 @@ export class ChannelState {
     return sha3(...toHash)
   }
 
-  ourStateData():State['data']{
+  ourStateData(): State["data"] {
     return {
       _id: this._id,
       _playerBalance: this.balance.player,
@@ -144,12 +142,12 @@ export class ChannelState {
     }
   }
 
-  createState(bet:number, profit:number):State{
+  createState(bet: number, profit: number): State {
     // Change balances on channel state
     this._addTotalBet(bet)
     this._addTX(profit)
 
-    const ourAddr   = this.Eth.getAccount().address
+    const ourAddr = this.Eth.getAccount().address
     const stateData = this.ourStateData()
     const stateHash = this._sha3state(stateData)
     const stateSign = this.Eth.signHash(stateHash)
@@ -157,21 +155,21 @@ export class ChannelState {
     this._session++
 
     this.state = {
-      data  : stateData,
-      hash  : stateHash,
-      signs : {
-        [ourAddr] : stateSign
+      data: stateData,
+      hash: stateHash,
+      signs: {
+        [ourAddr]: stateSign
       }
     }
 
     return this.state
   }
 
-  getState():State['data'] {
+  getState(): State["data"] {
     return this.state.data
   }
 
-  hasUnconfirmed(address:string) {
+  hasUnconfirmed(address: string) {
     if (this._session < 2) {
       return false
     }
@@ -182,7 +180,7 @@ export class ChannelState {
     }
 
     const recoverOpenkey = this.Eth.recover(this.state.hash, addrSign)
-    
+
     if (recoverOpenkey.toLowerCase() !== address.toLowerCase()) {
       return true
     }
@@ -190,26 +188,25 @@ export class ChannelState {
     return false
   }
 
-  confirmState(theirState:State, address:string){
+  confirmState(theirState: State, address: string) {
     const theirHash = this._sha3state(theirState.data)
-    
+
     if (this.state.hash !== theirHash) {
-      log.error(' this.state.hash !== theirHash ...')
+      log.error(" this.state.hash !== theirHash ...")
       return false
     }
 
     const theirSign = theirState.signs[address]
     const recoverOpenkey = this.Eth.recover(this.state.hash, theirSign)
-    
+
     if (recoverOpenkey.toLowerCase() !== address.toLowerCase()) {
-      log.error('State ' + recoverOpenkey + '!=' + address)
+      log.error("State " + recoverOpenkey + "!=" + address)
       return false
     }
 
-    this.state.signs[address] = ''+theirState.signs[address]
+    this.state.signs[address] = "" + theirState.signs[address]
     return true
   }
-
 
   reset() {
     log.debug("PayChannel::reset, set deposit balance profit to 0")
