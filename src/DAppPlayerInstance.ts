@@ -275,7 +275,6 @@ export class DAppPlayerInstance extends EventEmitter
             this._params.Eth.getAccount().address // owner
           )
           this.channelState.createState(0, 0)
-
           return { ...checkChannel }
         }
       }
