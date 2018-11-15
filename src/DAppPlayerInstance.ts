@@ -135,7 +135,7 @@ export class DAppPlayerInstance extends EventEmitter
       { t: "bytes32", v: args.channelId },
       { t: "address", v: args.playerAddress },
       { t: "uint", v: "" + args.playerDeposit },
-      { t: "uint", v: args.gameData }
+      { t: "bytes", v: args.gameData }
     ]
 
     const argsSignature: string = this._params.Eth.signData(argsToSign)
@@ -207,7 +207,7 @@ export class DAppPlayerInstance extends EventEmitter
       { t: "uint", v: "" + bet2dec(playerDeposit) },
       { t: "uint", v: peerResponse.bankrollerDepositWei },
       { t: "uint", v: peerResponse.openingBlock },
-      { t: "uint", v: gameData },
+      { t: "bytes", v: gameData },
       { t: "bytes", v: peerResponse.n },
       { t: "bytes", v: peerResponse.e }
     ]
@@ -418,7 +418,6 @@ export class DAppPlayerInstance extends EventEmitter
       "" + params._bankrollerBalance,
       "" + params._totalBet,
       "" + params._session,
-      true,
       paramsSignature
     ]
 
@@ -448,34 +447,25 @@ export class DAppPlayerInstance extends EventEmitter
     }
   }
 
-
-  openDispute(){
-
+  openDispute() {
     // updateChannel
-    // get channel state 
+    // get channel state
     // openDispute
-
-  //   let res = await player.sendTransaction(GameContract, 'updateChannel', [
-  //       id,
-  //       playerBalance,
-  //       bankrollerBalance,
-  //       totalBet,
-  //       session,
-  //       bankrollerSignature
-  //   ])
-
-   
-
-  //  let res = await player.sendTransaction(GameContract, 'openDispute', [
-  //      id,
-  //      session,
-  //      bets,
-  //      gameData,
-  //      playerSignature
-  //  ])
-
-
-
+    //   let res = await player.sendTransaction(GameContract, 'updateChannel', [
+    //       id,
+    //       playerBalance,
+    //       bankrollerBalance,
+    //       totalBet,
+    //       session,
+    //       bankrollerSignature
+    //   ])
+    //  let res = await player.sendTransaction(GameContract, 'openDispute', [
+    //      id,
+    //      session,
+    //      bets,
+    //      gameData,
+    //      playerSignature
+    //  ])
   }
 
   openDisputeUI() {

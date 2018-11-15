@@ -87,7 +87,7 @@ export class DAppDealerInstance extends EventEmitter
       { t: "bytes32", v: channelId },
       { t: "address", v: playerAddress },
       { t: "uint", v: "" + playerDeposit },
-      { t: "uint", v: gameData }
+      { t: "bytes", v: gameData }
     ]
 
     //  check balance
@@ -151,7 +151,7 @@ export class DAppDealerInstance extends EventEmitter
         { t: "uint", v: playerDepositWei },
         { t: "uint", v: bankrollerDepositWei },
         { t: "uint", v: openingBlock },
-        { t: "uint", v: gameData },
+        { t: "bytes", v: gameData },
         { t: "bytes", v: n },
         { t: "bytes", v: e }
       ]
