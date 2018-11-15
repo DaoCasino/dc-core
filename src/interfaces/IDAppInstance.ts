@@ -50,7 +50,7 @@ export interface OpenChannelParams {
 }
 export interface ConnectParams {
   playerDeposit: number
-  gameData: any
+  gameData: string
 }
 export interface GetChannelDataParams extends ConnectParams {
   playerAddress: string
@@ -135,7 +135,7 @@ export interface IDAppDealerInstance extends IDAppInstance {
     state: any // bankroller signed channel state
     rnd: Rnd // random params for verify on client side
   }>
-  confirmState(state:State):boolean
+  confirmState(state: State): boolean
   consentCloseChannel(stateSignature: string): ConsentResult
 
   checkCloseChannel(): Promise<any | Error>

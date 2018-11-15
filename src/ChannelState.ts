@@ -70,7 +70,7 @@ export class ChannelState {
 
     // set deposits
     this.deposit.player = +playerDeposit
-    this.deposit.bankroller = +playerDeposit
+    this.deposit.bankroller = +bankrollerDeposit
     this.balance.player = 1 * this.deposit.player
     this.balance.bankroller = 1 * this.deposit.bankroller
 
