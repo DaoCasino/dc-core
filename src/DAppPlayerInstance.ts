@@ -275,7 +275,6 @@ export class DAppPlayerInstance extends EventEmitter
             this._params.Eth.getAccount().address // owner
           )
           this.channelState.createState(0, 0)
-
           return { ...checkChannel }
         }
       }
@@ -447,6 +446,36 @@ export class DAppPlayerInstance extends EventEmitter
     } catch (error) {
       throw error
     }
+  }
+
+
+  openDispute(){
+
+    // updateChannel
+    // get channel state 
+    // openDispute
+
+  //   let res = await player.sendTransaction(GameContract, 'updateChannel', [
+  //       id,
+  //       playerBalance,
+  //       bankrollerBalance,
+  //       totalBet,
+  //       session,
+  //       bankrollerSignature
+  //   ])
+
+   
+
+  //  let res = await player.sendTransaction(GameContract, 'openDispute', [
+  //      id,
+  //      session,
+  //      bets,
+  //      gameData,
+  //      playerSignature
+  //  ])
+
+
+
   }
 
   openDisputeUI() {

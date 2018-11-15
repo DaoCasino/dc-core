@@ -89,7 +89,27 @@ export class DAppDealerInstance extends EventEmitter
       { t: "uint", v: "" + playerDeposit },
       { t: "uint", v: gameData }
     ]
-    const recoverOpenkey = this._params.Eth.recover(sha3(...toRecover), paramsSignature)
+
+    //  check balance
+    const balances = await this._params.Eth.getBalances()
+    if (balances.bet.balance < playerDeposit) {
+      throw new Error(
+        `Not enough bet balance at address: ${
+          this._params.Eth.getAccount().address
+        }`
+      )
+    }
+    if (balances.eth.balance < 0.01) {
+      throw new Error(
+        `Not enough ETH balance at address: ${
+          this._params.Eth.getAccount().address
+        }`
+      )
+    }
+    const recoverOpenkey = this._params.Eth.recover(
+      sha3(...toRecover),
+      paramsSignature
+    )
     if (recoverOpenkey.toLowerCase() !== playerAddress.toLowerCase()) {
       throw new Error("Invalid signature")
     }
@@ -169,10 +189,10 @@ export class DAppDealerInstance extends EventEmitter
         this._params.Eth.getAccount().address,
         channel.playerBalance,
         channel.bankrollerBalance,
-        
+
         this._params.Eth.getAccount().address // owner
       )
-      this.channelState.createState(0,0)
+      this.channelState.createState(0, 0)
 
       this.emit("info", {
         event: "OpenChannel checked",
@@ -272,8 +292,11 @@ export class DAppDealerInstance extends EventEmitter
     return { state, profit, randoms, rnd }
   }
 
-  confirmState(state:State){
-    const stateFromPlayerConfirmed = this.channelState.confirmState(state, this.playerAddress)
+  confirmState(state: State) {
+    const stateFromPlayerConfirmed = this.channelState.confirmState(
+      state,
+      this.playerAddress
+    )
     return stateFromPlayerConfirmed
   }
 
