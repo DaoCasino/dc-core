@@ -448,6 +448,36 @@ export class DAppPlayerInstance extends EventEmitter
     }
   }
 
+
+  openDispute(){
+
+    // updateChannel
+    // get channel state 
+    // openDispute
+
+  //   let res = await player.sendTransaction(GameContract, 'updateChannel', [
+  //       id,
+  //       playerBalance,
+  //       bankrollerBalance,
+  //       totalBet,
+  //       session,
+  //       bankrollerSignature
+  //   ])
+
+   
+
+  //  let res = await player.sendTransaction(GameContract, 'openDispute', [
+  //      id,
+  //      session,
+  //      bets,
+  //      gameData,
+  //      playerSignature
+  //  ])
+
+
+
+  }
+
   openDisputeUI() {
     const dialog = msg => {
       return confirm(msg) || log.info(msg)
