@@ -238,11 +238,11 @@ export class DAppDealerInstance extends EventEmitter
     }
 
     // enough bets ?
-    if (lastState._playerBalance < 1 * userBetWei) {
+    if (lastState._playerBalance < Number(userBetWei)) {
       throw new Error(
         `Player ${this.playerAddress} not enougth money for this bet, balance ${
           lastState._playerBalance
-        } < ${userBet}`
+        } < ${userBetWei}`
       )
     }
 
