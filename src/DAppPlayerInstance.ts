@@ -109,7 +109,7 @@ export class DAppPlayerInstance extends EventEmitter
      */
     log.info(`start ERC20ApproveSafe ${playerDeposit}`)
     await this._params.Eth.ERC20ApproveSafe(
-      this._params.payChannelContractAddress,
+      this._params.gameContractAddress,
       playerDeposit
     )
 
@@ -117,7 +117,7 @@ export class DAppPlayerInstance extends EventEmitter
     this.emit("info", {
       event: "deposit approved",
       address: this._params.Eth.getAccount().address,
-      gameAddress: this._params.payChannelContractAddress,
+      gameAddress: this._params.gameContractAddress,
       amount: playerDeposit
     })
 
@@ -178,7 +178,7 @@ export class DAppPlayerInstance extends EventEmitter
      * throw error
      */
     const bankrollerAllowance: number = await this._params.Eth.allowance(
-      this._params.payChannelContractAddress,
+      this._params.gameContractAddress,
       peerResponse.bankrollerAddress
     )
     if (bankrollerAllowance < bankrollerDeposit) {
@@ -191,7 +191,7 @@ export class DAppPlayerInstance extends EventEmitter
     this.emit("info", {
       event: "Bankroller allowance checked",
       address: peerResponse.bankrollerAddress,
-      gameAddress: this._params.payChannelContractAddress,
+      gameAddress: this._params.gameContractAddress,
       amount: bankrollerDeposit
     })
 
@@ -255,7 +255,7 @@ export class DAppPlayerInstance extends EventEmitter
       /** Start open channel tx and check status */
       log.debug(`start openChannel transaction`)
       const openChannelTX = await this._params.Eth.sendTransaction(
-        this._params.payChannelContract,
+        this._params.gameContractInstance,
         "openChannel",
         openChannelArgs
       )
@@ -424,7 +424,7 @@ export class DAppPlayerInstance extends EventEmitter
     try {
       log.debug(`start close transaction`)
       const closeChannelTX = await this._params.Eth.sendTransaction(
-        this._params.payChannelContract,
+        this._params.gameContractInstance,
         "closeByConsent",
         closeParams
       )

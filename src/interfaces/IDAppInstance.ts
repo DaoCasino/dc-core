@@ -12,10 +12,11 @@ export interface DAppInstanceParams {
   userId: UserId
   num: number
   rules: any
-  payChannelContract: Contract
-  payChannelContractAddress: string
+  // payChannelContract: any
   roomAddress: string
   gameLogicFunction: () => IGameLogic
+  gameContractInstance: Contract
+  gameContractAddress: string
   roomProvider: IMessagingProvider
   onFinish: (userId: UserId) => void
   gameInfo: GameInfo

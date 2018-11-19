@@ -1,9 +1,6 @@
 import { IMessagingProvider } from "dc-messaging"
-import { Eth, ETHInstance } from "dc-ethereum-utils"
-import { ContractInfo } from "dc-configs"
+import { ETHInstance } from "dc-ethereum-utils"
 import { IGameLogic, DAppInstanceView } from "./index"
-import { platform } from "os"
-import { blockchainNetworkConfigs } from "dc-configs/lib/blockchainNetworks"
 
 export interface DAppParams {
   slug: string
@@ -11,7 +8,7 @@ export interface DAppParams {
   platformId: string
   blockchainNetwork: string
   gameLogicFunction: () => IGameLogic
-  contract: ContractInfo
+  gameContractAddress: string
   roomProvider: IMessagingProvider
   Eth: ETHInstance
 }
