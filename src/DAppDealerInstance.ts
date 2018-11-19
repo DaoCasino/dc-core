@@ -166,7 +166,7 @@ export class DAppDealerInstance extends EventEmitter
 
   async checkOpenChannel(): Promise<any> {
     const bankrollerAddress = this._params.Eth.getAccount().address.toLowerCase()
-    const channel = await this._params.payChannelContract.methods
+    const channel = await this._params.gameContractInstance.methods
       .channels(this.channelId)
       .call()
 
@@ -332,7 +332,7 @@ export class DAppDealerInstance extends EventEmitter
 
   async checkCloseChannel(): Promise<any> {
     /** Check channel state */
-    const channel = await this._params.payChannelContract.methods
+    const channel = await this._params.gameContractInstance.methods
       .channels(this.channelId)
       .call()
 
