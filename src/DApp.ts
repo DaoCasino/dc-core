@@ -69,10 +69,9 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
       contract: gameContractAddress
     }
 
-
     this._gameContractAddress = gameContractAddress
     this._gameContractInstance = this._params.Eth.initContract(
-      'TODO: contract.abi',
+      config.default.contracts.Game.abi,
       gameContractAddress
     )
 
