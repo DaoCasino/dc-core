@@ -166,7 +166,7 @@ export class DAppDealerInstance extends EventEmitter
 
   async checkOpenChannel(): Promise<any> {
     const bankrollerAddress = this._params.Eth.getAccount().address.toLowerCase()
-    const channel = await this._params.payChannelContract.methods
+    const channel = await this._params.gameContractInstance.methods
       .channels(this.channelId)
       .call()
 
@@ -238,11 +238,11 @@ export class DAppDealerInstance extends EventEmitter
     }
 
     // enough bets ?
-    if (lastState._playerBalance < 1 * userBetWei) {
+    if (lastState._playerBalance < Number(userBetWei)) {
       throw new Error(
         `Player ${this.playerAddress} not enougth money for this bet, balance ${
           lastState._playerBalance
-        } < ${userBet}`
+        } < ${userBetWei}`
       )
     }
 
@@ -332,7 +332,7 @@ export class DAppDealerInstance extends EventEmitter
 
   async checkCloseChannel(): Promise<any> {
     /** Check channel state */
-    const channel = await this._params.payChannelContract.methods
+    const channel = await this._params.gameContractInstance.methods
       .channels(this.channelId)
       .call()
 
