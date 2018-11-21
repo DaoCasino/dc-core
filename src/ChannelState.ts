@@ -131,7 +131,9 @@ export class ChannelState {
     }
   }
 
-  createState(bet: number, profit: number): State {
+  createState(bet: number|string, profit: number): State {
+    bet = Number(bet)
+    
     // Change balances on channel state
     this._addTotalBet(bet)
     this._addTX(profit)

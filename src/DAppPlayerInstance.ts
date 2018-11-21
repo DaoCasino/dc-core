@@ -18,7 +18,7 @@ import {generateRandom} from "./Rnd"
 
 import {
   sha3, makeSeed,
-  dec2bet, bet2dec, bets2decs, flatternArr,
+  dec2bet, bet2dec, bets2decs, betsSumm, flatternArr,
   SolidityTypeValue
 } from "dc-ethereum-utils"
 
@@ -281,10 +281,8 @@ export class DAppPlayerInstance extends EventEmitter
   }
 
 
-  async play(params: PlayParams) {
-   
+  async play(params: PlayParams) {   
     const {userBets}  = params
-    const userBetsWei = bets2decs(userBets)
 
     // Add entropy(seed) to gameData
     const gameData = { seed: makeSeed(), ...params.gameData }
@@ -304,7 +302,7 @@ export class DAppPlayerInstance extends EventEmitter
     const msgData: SolidityTypeValue[] = [
       { t: "bytes32", v: this.channelId },
       { t: "uint256", v: ''+this.channelState.getSession() },
-      { t: "uint256", v: ''+userBetsWei },
+      { t: "uint256", v: bets2decs(userBets) },
       { t: "bytes32", v: hashGameData }
     ]
     const roundHash = sha3(...msgData)
@@ -335,7 +333,7 @@ export class DAppPlayerInstance extends EventEmitter
 
     // Create our channel state
     const state = this.channelState.createState(
-      userBetsWei.reduce((a,b)=>a+b),
+      betsSumm(userBets),
       +bet2dec(playResult.profit)
     )
 

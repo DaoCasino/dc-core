@@ -14,7 +14,7 @@ import {
 
 import {
   sha3, makeSeed,
-  dec2bet, bets2decs, bet2dec, remove0x, flatternArr,
+  dec2bet, bets2decs, bet2dec, betsSumm, remove0x, flatternArr,
   SolidityTypeValue
 } from "dc-ethereum-utils"
 
@@ -214,8 +214,7 @@ export class DAppDealerInstance extends EventEmitter
     session: number,
     sign: string
   ) {
-    const userBetsWei = bets2decs(userBets)
-    const userAllBetsWei = userBetsWei.reduce((a, b) => a + b)
+    const userAllBetsWei = Number(betsSumm(userBets))
 
     const lastState = this.channelState.getState()
     const curSession = this.channelState.getSession()
@@ -233,7 +232,7 @@ export class DAppDealerInstance extends EventEmitter
     }
 
     // enough bets ?
-    if (lastState._playerBalance < Number(userAllBetsWei)) {
+    if (lastState._playerBalance < userAllBetsWei) {
       throw new Error(
         `Player ${this.playerAddress} not enougth money for this bet, balance ${
           lastState._playerBalance
@@ -253,7 +252,7 @@ export class DAppDealerInstance extends EventEmitter
     const msgData: SolidityTypeValue[] = [
       { t: "bytes32", v: lastState._id },
       { t: "uint256", v: ''+curSession },
-      { t: "uint256", v: userBetsWei },
+      { t: "uint256", v: bets2decs(userBets) },
       { t: "bytes32", v: hashGameData },
     ]
     const msgHash = sha3(...msgData)
