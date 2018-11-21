@@ -1,19 +1,8 @@
 import { Eth, ETHInstance, sha3, SolidityTypeValue } from "dc-ethereum-utils"
-
+import { State } from './index'
 import { Logger } from "dc-logging"
 const log = new Logger("tests")
 
-export interface State {
-  data: {
-    _id: string
-    _playerBalance: number
-    _bankrollerBalance: number
-    _totalBet: number
-    _session: number
-  }
-  hash: string // sha3 hash of SolidityTypeValue data
-  signs: {}
-}
 
 export class ChannelState {
   private _id: string // channel id
