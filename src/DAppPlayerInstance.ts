@@ -289,15 +289,16 @@ export class DAppPlayerInstance extends EventEmitter
     // Add entropy(seed) to gameData
     const gameData = { seed: makeSeed(), ...params.gameData }
 
+    const flatRanges = flatternArr(gameData.randomRanges)
     // Create gameData hash with rules from logic.js
-    const hashGameData = sha3( [
+    const hashGameData = sha3( ...[
       { t: "bytes32", v: gameData.seed },
-      { t: "uint256", v: flatternArr(gameData.randomRanges) }
+      { t: "uint256", v: flatRanges }
       ].concat(
         this._gameLogic.customDataFormat(gameData.custom) 
       )
     )
-
+    
     // hash of all data use for generate random
     // and sign sended message
     const msgData: SolidityTypeValue[] = [

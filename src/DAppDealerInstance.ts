@@ -243,7 +243,7 @@ export class DAppDealerInstance extends EventEmitter
 
     // msg data for hashing by sha3
     // for check sig and random genrate
-    const hashGameData = sha3( [
+    const hashGameData = sha3( ...[
       { t: "bytes32", v: gameData.seed },
       { t: "uint256", v: flatternArr(gameData.randomRanges) }
       ].concat(
