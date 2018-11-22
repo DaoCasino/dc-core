@@ -1,19 +1,8 @@
 import { Eth, ETHInstance, sha3, SolidityTypeValue } from "dc-ethereum-utils"
-
+import { State } from './index'
 import { Logger } from "dc-logging"
 const log = new Logger("tests")
 
-export interface State {
-  data: {
-    _id: string
-    _playerBalance: number
-    _bankrollerBalance: number
-    _totalBet: number
-    _session: number
-  }
-  hash: string // sha3 hash of SolidityTypeValue data
-  signs: {}
-}
 
 export class ChannelState {
   private _id: string // channel id
@@ -70,7 +59,7 @@ export class ChannelState {
 
     // set deposits
     this.deposit.player = +playerDeposit
-    this.deposit.bankroller = +playerDeposit
+    this.deposit.bankroller = +bankrollerDeposit
     this.balance.player = 1 * this.deposit.player
     this.balance.bankroller = 1 * this.deposit.bankroller
 
@@ -142,7 +131,9 @@ export class ChannelState {
     }
   }
 
-  createState(bet: number, profit: number): State {
+  createState(bet: number|string, profit: number): State {
+    bet = Number(bet)
+    
     // Change balances on channel state
     this._addTotalBet(bet)
     this._addTX(profit)

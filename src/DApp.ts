@@ -1,5 +1,7 @@
 import { IDApp, DAppParams, UserId, GameInfo } from "./interfaces/index"
 
+import { config } from "dc-configs"
+
 import { Logger } from "dc-logging"
 import Contract from "web3/eth/contract"
 import { setInterval } from "timers"
@@ -33,8 +35,8 @@ interface IGameInfoRoom {
 export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
   private _params: DAppParams
   _instancesMap: Map<UserId, DAppDealerInstance>
-  _payChannelContract: Contract
-  _payChannelContractAddress: string
+  _gameContractInstance: Contract
+  _gameContractAddress: string
   _gameInfo: GameInfo
   _beaconInterval: NodeJS.Timer
   _gameInfoRoom: IGameInfoRoom
@@ -50,29 +52,29 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
       throw new Error("slug option is required")
     }
 
-    if (!params.contract) {
-      throw new Error("Contract is not specified in  DApp params")
+    if (!params.gameContractAddress) {
+      throw new Error("gameContract is not specified in  DApp params")
     }
 
     this._params = params
     this._instancesMap = new Map()
 
-    const { contract, slug } = this._params
+    const { gameContractAddress, slug } = this._params
     const gameId = slug
 
     this._gameInfo = {
       gameId,
       slug,
       hash: Utils.checksum(slug),
-      contract
+      contract: gameContractAddress
     }
 
-    this._payChannelContract = this._params.Eth.initContract(
-      contract.abi,
-      contract.address
+    this._gameContractAddress = gameContractAddress
+    this._gameContractInstance = this._params.Eth.initContract(
+      config.default.contracts.Game.abi,
+      gameContractAddress
     )
 
-    this._payChannelContractAddress = contract.address
     this._gameInfoRoomAddress = `${params.platformId}_${
       params.blockchainNetwork
     }_${this._gameInfo.hash}`
@@ -141,8 +143,8 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
         userId,
         num: 0,
         rules: this._params.rules,
-        payChannelContract: this._payChannelContract,
-        payChannelContractAddress: this._payChannelContractAddress,
+        gameContractInstance: this._gameContractInstance,
+        gameContractAddress: this._gameContractAddress,
         gameLogicFunction: this._params.gameLogicFunction,
         roomProvider: this._params.roomProvider,
         roomAddress,
@@ -172,7 +174,7 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
       true
     )
     await this._params.Eth.ERC20ApproveSafe(
-      this._payChannelContractAddress,
+      this._gameContractAddress,
       SERVER_APPROVE_AMOUNT,
       SERVER_APPROVE_MINAMOUNT
     )
@@ -213,9 +215,9 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
       num: 0,
       rules: this._params.rules,
       roomAddress,
-      payChannelContract: this._payChannelContract,
-      payChannelContractAddress: this._payChannelContractAddress,
       gameLogicFunction: this._params.gameLogicFunction,
+      gameContractInstance: this._gameContractInstance,
+      gameContractAddress: this._gameContractAddress,
       roomProvider: this._params.roomProvider,
       onFinish: this.onGameFinished,
       gameInfo: this._gameInfo,

@@ -3,7 +3,7 @@ import { IGameLogic } from "./interfaces/index"
 import { Eth } from "dc-ethereum-utils"
 import { Logger } from "dc-logging"
 
-import { config, ContractInfo, BlockchainNetwork, IConfig } from "dc-configs"
+import { config, BlockchainNetwork, IConfig } from "dc-configs"
 
 import { GlobalGameLogicStore } from "./GlobalGameLogicStore"
 import { DApp } from "./DApp"
@@ -28,7 +28,7 @@ export class DAppFactory {
   async create(params: {
     name: string
     gameLogicFunction: () => IGameLogic
-    contract: ContractInfo
+    gameContractAddress: string
     gameEth?: Eth
     rules: any
   }): Promise<DApp> {
@@ -36,26 +36,26 @@ export class DAppFactory {
       gasPrice: price,
       gasLimit: limit,
       web3HttpProviderUrl: httpProviderUrl,
-      getContracts,
+      contracts,
       walletName
     } = this._configuration
     this.eth = new Eth({
       walletName,
       httpProviderUrl,
-      ERC20ContractInfo: (await getContracts()).ERC20,
+      ERC20ContractInfo: contracts.ERC20,
       gasParams: { price, limit }
     })
-    const { name, gameLogicFunction, contract, rules, gameEth } = params
+    const { name, gameLogicFunction, gameContractAddress, rules, gameEth } = params
     const { platformId, blockchainNetwork, privateKey } = this._configuration
     await this.eth.initAccount(privateKey)
     const dappParams = {
       slug: name,
       platformId,
       blockchainNetwork,
-      contract,
       rules,
       roomProvider: this._transportProvider,
       gameLogicFunction,
+      gameContractAddress,
       Eth: gameEth || this.eth
     }
 
@@ -65,7 +65,7 @@ export class DAppFactory {
   async startClient(params: {
     name: string
     gameLogicFunction: () => IGameLogic
-    contract: ContractInfo
+    gameContractAddress: string
     rules: any
   }): Promise<DAppPlayerInstance> {
     const dapp = await this.create(params)
@@ -77,7 +77,7 @@ export class DAppFactory {
   async startDealer(params: {
     name: string
     gameLogicFunction: () => IGameLogic
-    contract: ContractInfo
+    gameContractAddress: string
     rules: any
   }): Promise<void> {
     const dapp = await this.create(params)

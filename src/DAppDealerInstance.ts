@@ -1,6 +1,6 @@
 import {
   IRsa,
-  Rnd,
+  GameData, State,
   IGameLogic,
   ConnectParams,
   ConsentResult,
@@ -10,22 +10,20 @@ import {
   DAppInstanceParams,
   IDAppDealerInstance,
   GetChannelDataParams
-} from "./interfaces/index"
+} from "./index"
 
 import {
-  sha3,
-  dec2bet,
-  bet2dec,
-  makeSeed,
-  remove0x,
+  sha3, makeSeed,
+  dec2bet, bets2decs, bet2dec, betsSumm, remove0x, flatternArr,
   SolidityTypeValue
 } from "dc-ethereum-utils"
 
 import { Logger } from "dc-logging"
 import { config } from "dc-configs"
-import { ChannelState, State } from "./ChannelState"
+import { ChannelState } from "./ChannelState"
 import { EventEmitter } from "events"
 import { Rsa } from "./Rsa"
+import { generateRandom } from "./Rnd"
 const log = new Logger("DealerInstance")
 
 export class DAppDealerInstance extends EventEmitter
@@ -81,13 +79,12 @@ export class DAppDealerInstance extends EventEmitter
     paramsSignature: string
   ): Promise<SignedResponse<OpenChannelParams>> {
     /** Parse params */
-    const { channelId, playerAddress, playerDeposit, gameData } = params
+    const { channelId, playerAddress, playerDeposit } = params
 
     const toRecover: SolidityTypeValue[] = [
       { t: "bytes32", v: channelId },
       { t: "address", v: playerAddress },
-      { t: "uint", v: "" + playerDeposit },
-      { t: "uint", v: gameData }
+      { t: "uint256", v: "" + playerDeposit },
     ]
 
     //  check balance
@@ -126,8 +123,8 @@ export class DAppDealerInstance extends EventEmitter
       // Args for open channel transaction
       const { n, e } = this.Rsa.getNE()
       log.debug("" + playerDeposit)
-      const playerDepositWei = bet2dec(playerDeposit)
-      const bankrollerDepositWei = bet2dec(bankrollerDeposit)
+      const playerDepositWei = ''+bet2dec(playerDeposit)
+      const bankrollerDepositWei = ''+bet2dec(bankrollerDeposit)
       this.playerDepositWei = playerDepositWei
       this.bankrollerDepositWei = bankrollerDepositWei
 
@@ -138,7 +135,6 @@ export class DAppDealerInstance extends EventEmitter
         bankrollerAddress,
         bankrollerDepositWei,
         openingBlock,
-        gameData,
         n,
         e
       }
@@ -148,10 +144,9 @@ export class DAppDealerInstance extends EventEmitter
         { t: "bytes32", v: channelId },
         { t: "address", v: playerAddress },
         { t: "address", v: bankrollerAddress },
-        { t: "uint", v: playerDepositWei },
-        { t: "uint", v: bankrollerDepositWei },
-        { t: "uint", v: openingBlock },
-        { t: "uint", v: gameData },
+        { t: "uint256", v: playerDepositWei },
+        { t: "uint256", v: bankrollerDepositWei },
+        { t: "uint256", v: openingBlock },
         { t: "bytes", v: n },
         { t: "bytes", v: e }
       ]
@@ -166,7 +161,7 @@ export class DAppDealerInstance extends EventEmitter
 
   async checkOpenChannel(): Promise<any> {
     const bankrollerAddress = this._params.Eth.getAccount().address.toLowerCase()
-    const channel = await this._params.payChannelContract.methods
+    const channel = await this._params.gameContractInstance.methods
       .channels(this.channelId)
       .call()
 
@@ -214,14 +209,13 @@ export class DAppDealerInstance extends EventEmitter
    */
 
   async callPlay(
-    userBet: number,
-    gameData: any,
-    rndOpts: Rnd["opts"],
-    seed: string,
+    userBets: number[],
+    gameData: {seed:string, randomRanges:GameData['randomRanges'], custom?:GameData['custom']},
     session: number,
     sign: string
   ) {
-    const userBetWei = bet2dec(userBet)
+    const userAllBetsWei = Number(betsSumm(userBets))
+
     const lastState = this.channelState.getState()
     const curSession = this.channelState.getSession()
 
@@ -238,22 +232,28 @@ export class DAppDealerInstance extends EventEmitter
     }
 
     // enough bets ?
-    if (lastState._playerBalance < 1 * userBetWei) {
+    if (lastState._playerBalance < userAllBetsWei) {
       throw new Error(
         `Player ${this.playerAddress} not enougth money for this bet, balance ${
           lastState._playerBalance
-        } < ${userBet}`
+        } < ${userAllBetsWei}`
       )
     }
 
     // msg data for hashing by sha3
     // for check sig and random genrate
+    const hashGameData = sha3( ...[
+      { t: "bytes32", v: gameData.seed },
+      { t: "uint256", v: flatternArr(gameData.randomRanges) }
+      ].concat(
+        this._gameLogic.customDataFormat(gameData.custom) 
+      )
+    )
     const msgData: SolidityTypeValue[] = [
       { t: "bytes32", v: lastState._id },
-      { t: "uint", v: curSession },
-      { t: "uint", v: "" + userBetWei },
-      { t: "uint", v: gameData },
-      { t: "bytes32", v: seed }
+      { t: "uint256", v: ''+curSession },
+      { t: "uint256", v: bets2decs(userBets) },
+      { t: "bytes32", v: hashGameData },
     ]
     const msgHash = sha3(...msgData)
 
@@ -266,30 +266,18 @@ export class DAppDealerInstance extends EventEmitter
     //
     // Generate random
     //
-    const rnd: Rnd = {
-      opts: rndOpts,
-      hash: msgHash,
-      sig: this.Rsa.sign(msgHash).toString(),
-      res: ""
-    }
-    rnd.res = sha3(rnd.sig)
-    // @TODO : generate many randoms by rndOpts
-    const randoms = [
-      this._params.Eth.numFromHash(rnd.res, rnd.opts[0][0], rnd.opts[0][1])
-    ]
+    const rndSig  = this.Rsa.sign(msgHash).toString() 
+    const randoms = generateRandom( gameData.randomRanges, rndSig) 
 
     // Call game logic functions with generated randoms
-    const profit = this._gameLogic.play(userBet, gameData, randoms)
+    const playResult = this._gameLogic.play(userBets, gameData, randoms)
 
     // Change balances on channel state
-    const state = this.channelState.createState(
-      1 * userBetWei,
-      1 * bet2dec(profit)
-    )
+    const state = this.channelState.createState(userAllBetsWei, +bet2dec(playResult.profit) )
 
     // piu-piu-piu
     // the casino never loses ;)
-    return { state, profit, randoms, rnd }
+    return { playResult, randoms, rndSig, state }
   }
 
   confirmState(state: State) {
@@ -332,7 +320,7 @@ export class DAppDealerInstance extends EventEmitter
 
   async checkCloseChannel(): Promise<any> {
     /** Check channel state */
-    const channel = await this._params.payChannelContract.methods
+    const channel = await this._params.gameContractInstance.methods
       .channels(this.channelId)
       .call()
 
