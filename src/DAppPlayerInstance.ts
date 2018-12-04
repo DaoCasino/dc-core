@@ -298,8 +298,8 @@ export class DAppPlayerInstance extends EventEmitter
       ...[
         { t: "bytes32", v: gameData.seed },
         { t: "uint256", v: flatRanges }
-      ].concat(this._gameLogic.customDataFormat(gameData.custom))
-    )
+      ].concat( Object.values(gameData.custom) )
+    )    
 
     // hash of all data use for generate random
     // and sign sended message
