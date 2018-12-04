@@ -262,7 +262,6 @@ export class DAppPlayerInstance extends EventEmitter
         "openChannel",
         openChannelArgs
       )
-
       if (openChannelTX.status) {
         /** Check dealer channel */
         const checkChannel = await this._dealer.checkOpenChannel()
