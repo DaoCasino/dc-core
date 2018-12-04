@@ -78,9 +78,6 @@ export interface IGameLogic {
     gameData: GameData,
     randoms: number[]
   ) => PlayResult
-
-  // format custom gameData values
-  customDataFormat: (customGameData: GameData["custom"]) => SolidityTypeValue[]
 }
 
 // Channel state object
