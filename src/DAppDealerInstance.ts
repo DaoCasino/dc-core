@@ -245,9 +245,7 @@ export class DAppDealerInstance extends EventEmitter
     const hashGameData = sha3( ...[
       { t: "bytes32", v: gameData.seed },
       { t: "uint256", v: flatternArr(gameData.randomRanges) }
-      ].concat(
-        this._gameLogic.customDataFormat(gameData.custom) 
-      )
+      ].concat( Object.values(gameData.custom) )
     )
     const msgData: SolidityTypeValue[] = [
       { t: "bytes32", v: lastState._id },
