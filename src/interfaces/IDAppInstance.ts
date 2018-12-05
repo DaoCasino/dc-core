@@ -31,9 +31,8 @@ export interface IDAppInstance {
   start(): Promise<void> | void
 }
 
-
 /*
- * Client 
+ * Client
  */
 export interface OpenChannelParams {
   channelId: string
@@ -53,7 +52,6 @@ export interface GetChannelDataParams extends ConnectParams {
   channelId: string
 }
 
-
 export interface GameData {
   // options for random numbers
   // ex.: [[0,10],[50,100]] - get 2 random numbers,
@@ -63,24 +61,24 @@ export interface GameData {
   custom?: any
 }
 export interface PlayParams {
-  // array of user bets on current round [2,1,4] 
+  // array of user bets on current round [2,1,4]
   userBets: number[]
   gameData: GameData
 }
 
 export interface PlayResult {
-  profit:number // user win in current round
-  data?:any // Some other data from game-developer
+  profit: number // user win in current round
+  data?: any // Some other data from game-developer
 }
 
 export interface IGameLogic {
   // Basic game function
-  play: (userBets:number[], gameData:GameData, randoms:number[]) => PlayResult
-  
-  // format custom gameData values 
-  customDataFormat:(customGameData:GameData['custom']) => SolidityTypeValue[]
+  play: (
+    userBets: number[],
+    gameData: GameData,
+    randoms: number[]
+  ) => PlayResult
 }
-
 
 // Channel state object
 export interface State {
@@ -108,7 +106,7 @@ export interface ChannelStateData {
 export interface IDAppPlayerInstance extends IDAppInstance {
   // find bankroller in p2p network and "connect"
   connect(connectData: ConnectParams): Promise<any>
- 
+
   // send open channel TX on game contract (oneStepGame.sol)
   openChannel(
     openChannelData: OpenChannelParams,
@@ -121,7 +119,9 @@ export interface IDAppPlayerInstance extends IDAppInstance {
     Call game logic function on dealer side and client side
     verify randoms and channelState
    */
-  play(params: PlayParams): Promise<{ profit: number; randoms: number[] }>
+  play(
+    params: PlayParams
+  ): Promise<{ profit: number; randoms: number[]; data?: any }>
 
   // Send close channel TX on game contract (oneStepGame.sol)
   // ask dealer to sign data for close by consent and send TX
@@ -142,7 +142,7 @@ export interface CloseChannelParams {
 }
 
 /*
- * Dealer / bankroller 
+ * Dealer / bankroller
  */
 export interface IDAppDealerInstance extends IDAppInstance {
   getOpenChannelData(
@@ -156,24 +156,24 @@ export interface IDAppDealerInstance extends IDAppInstance {
     Call game logic function on dealer side
    */
   callPlay(
-    userBets: PlayParams['userBets'], // array of humanreadable format token value 1 = 1 * 10**18
+    userBets: PlayParams["userBets"], // array of humanreadable format token value 1 = 1 * 10**18
     // specified data for game
     gameData: {
       seed: string
-      randomRanges: GameData['randomRanges']
-      custom?: GameData['custom']
+      randomRanges: GameData["randomRanges"]
+      custom?: GameData["custom"]
     },
     session: number, // aka nonce, every call session++ on channelState
     sign: string // ETHsign of sended data / previous args
   ): Promise<{
-    playResult:PlayResult
+    playResult: PlayResult
     randoms: number[] // randoms arg applied to gamelogic function
     rndSig: string // random params for verify on client side
-    state: State  // bankroller signed channel state
+    state: State // bankroller signed channel state
   }>
 
   confirmState(state: State): boolean
-  
+
   consentCloseChannel(stateSignature: string): ConsentResult
 
   checkCloseChannel(): Promise<any | Error>

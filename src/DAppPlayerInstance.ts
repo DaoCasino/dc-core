@@ -1,6 +1,6 @@
 import {
   IRsa,
-  GameData, 
+  GameData,
   IGameLogic,
   ConnectParams,
   PlayParams,
@@ -11,14 +11,20 @@ import {
   IDAppDealerInstance,
   IDAppPlayerInstance,
   GetChannelDataParams,
-  ChannelStateData, State
+  ChannelStateData,
+  State
 } from "./interfaces/index"
 
-import {generateRandom} from "./Rnd"
+import { generateRandom } from "./Rnd"
 
 import {
-  sha3, makeSeed,
-  dec2bet, bet2dec, bets2decs, betsSumm, flatternArr,
+  sha3,
+  makeSeed,
+  dec2bet,
+  bet2dec,
+  bets2decs,
+  betsSumm,
+  flatternArr,
   SolidityTypeValue
 } from "dc-ethereum-utils"
 
@@ -127,14 +133,14 @@ export class DAppPlayerInstance extends EventEmitter
     const args = {
       channelId: this.channelId,
       playerAddress: this.playerAddress,
-      playerDeposit,
+      playerDeposit
     }
 
     /** Sign peer args */
     const argsToSign: SolidityTypeValue[] = [
       { t: "bytes32", v: args.channelId },
       { t: "address", v: args.playerAddress },
-      { t: "uint", v: "" + args.playerDeposit },
+      { t: "uint", v: "" + args.playerDeposit }
     ]
 
     const argsSignature: string = this._params.Eth.signData(argsToSign)
@@ -256,7 +262,6 @@ export class DAppPlayerInstance extends EventEmitter
         "openChannel",
         openChannelArgs
       )
-
       if (openChannelTX.status) {
         /** Check dealer channel */
         const checkChannel = await this._dealer.checkOpenChannel()
@@ -280,28 +285,26 @@ export class DAppPlayerInstance extends EventEmitter
     }
   }
 
-
-  async play(params: PlayParams) {   
-    const {userBets}  = params
+  async play(params: PlayParams) {
+    const { userBets } = params
 
     // Add entropy(seed) to gameData
     const gameData = { seed: makeSeed(), ...params.gameData }
 
     const flatRanges = flatternArr(gameData.randomRanges)
     // Create gameData hash with rules from logic.js
-    const hashGameData = sha3( ...[
-      { t: "bytes32", v: gameData.seed },
-      { t: "uint256", v: flatRanges }
-      ].concat(
-        this._gameLogic.customDataFormat(gameData.custom) 
-      )
-    )
-    
+    const hashGameData = sha3(
+      ...[
+        { t: "bytes32", v: gameData.seed },
+        { t: "uint256", v: flatRanges }
+      ].concat( Object.values(gameData.custom) )
+    )    
+
     // hash of all data use for generate random
     // and sign sended message
     const msgData: SolidityTypeValue[] = [
       { t: "bytes32", v: this.channelId },
-      { t: "uint256", v: ''+this.channelState.getSession() },
+      { t: "uint256", v: "" + this.channelState.getSession() },
       { t: "uint256", v: bets2decs(userBets) },
       { t: "bytes32", v: hashGameData }
     ]
@@ -322,7 +325,7 @@ export class DAppPlayerInstance extends EventEmitter
       // this.openDisputeUI()
     }
 
-    const randomsArr = generateRandom( gameData.randomRanges, dealerRes.rndSig ) 
+    const randomsArr = generateRandom(gameData.randomRanges, dealerRes.rndSig)
 
     // Call gamelogic function on player side
     const playResult = this._gameLogic.play(userBets, gameData, randomsArr)
@@ -342,16 +345,19 @@ export class DAppPlayerInstance extends EventEmitter
     log.debug("player state", state)
 
     // try add bankroller sign state
-    this.channelState.confirmState(dealerRes.state, this.channelState.bankrollerOpenkey)
+    this.channelState.confirmState(
+      dealerRes.state,
+      this.channelState.bankrollerOpenkey
+    )
 
     // Send our signed state to dealer
     // dealerRes.state
     const confirmed = await this._dealer.confirmState(state)
 
-
-    return { 
-      profit  : playResult.profit, 
-      randoms : randomsArr 
+    return {
+      profit: playResult.profit,
+      data: playResult.data,
+      randoms: randomsArr
     }
   }
 
