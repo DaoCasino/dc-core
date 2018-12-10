@@ -12,8 +12,8 @@ export class Rsa implements IRsa {
 
   getNE(): { n: string; e: string } {
     const { n, e } = this._instance.exportKey(COMPONENTS_PUBLIC_KEY)
-    const _n = (n.toString("hex").length / 2 === 0) ? n.toString("hex") : '0' + n.toString("hex") 
-    const _e = (e.toString(16).length / 2 === 0) ? e.toString(16) : '0' + e.toString(16) 
+    const _n = (n.toString("hex").length % 2 === 0) ? n.toString("hex") : '0' + n.toString("hex") 
+    const _e = (e.toString(16).length % 2 === 0) ? e.toString(16) : '0' + e.toString(16) 
     return {
       n: `${add0x(_n)}`,
       e: `${add0x(_e)}`
