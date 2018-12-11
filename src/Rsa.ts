@@ -1,6 +1,6 @@
 import NodeRsa from "node-rsa"
 import { IRsa } from "./interfaces/index"
-import { remove0x } from "dc-ethereum-utils"
+import { add0x, remove0x } from "dc-ethereum-utils"
 
 const COMPONENTS_PUBLIC_KEY = "components-public"
 export class Rsa implements IRsa {
@@ -12,10 +12,11 @@ export class Rsa implements IRsa {
 
   getNE(): { n: string; e: string } {
     const { n, e } = this._instance.exportKey(COMPONENTS_PUBLIC_KEY)
-
+    const _n = (n.toString("hex").length % 2 === 0) ? n.toString("hex") : '0' + n.toString("hex")
+    const _e = (e.toString(16).length % 2 === 0) ? e.toString(16) : '0' + e.toString(16)
     return {
-      n: `0x${n.toString("hex")}`,
-      e: `0x0${e.toString(16)}`
+      n: `${add0x(_n)}`,
+      e: `${add0x(_e)}`
     }
   }
 
