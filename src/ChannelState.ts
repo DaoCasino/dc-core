@@ -1,5 +1,5 @@
 import { Eth, ETHInstance, sha3, SolidityTypeValue } from "dc-ethereum-utils"
-import { State } from './index'
+import { State, FullGameData, PlayParams } from './index'
 import { Logger } from "dc-logging"
 const log = new Logger("tests")
 
@@ -14,6 +14,10 @@ export class ChannelState {
   owner: string // instance owner
 
   state: State
+  playData: {
+    userBets: PlayParams['userBets'],
+    gameData: FullGameData
+  }
 
   playerOpenkey: string
   bankrollerOpenkey: string
@@ -131,6 +135,13 @@ export class ChannelState {
     }
   }
 
+  savePlayData(userBets:PlayParams['userBets'], gameData:FullGameData){
+    this.playData = {userBets, gameData}
+  }
+  getPlayData() {
+    return this.playData
+  }
+
   createState(bet: number|string, profit: number): State {
     bet = Number(bet)
     
@@ -158,6 +169,10 @@ export class ChannelState {
 
   getState(): State["data"] {
     return this.state.data
+  }
+
+  getFullState(): State {
+    return this.state
   }
 
   hasUnconfirmed(address: string) {
