@@ -1,6 +1,6 @@
 import NodeRsa from "node-rsa"
 import { IRsa } from "./interfaces/index"
-import { add0x, remove0x } from "dc-ethereum-utils"
+import { add0x, remove0x } from "@daocasino/dc-ethereum-utils"
 
 const COMPONENTS_PUBLIC_KEY = "components-public"
 export class Rsa implements IRsa {

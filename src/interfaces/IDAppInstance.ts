@@ -1,5 +1,5 @@
-import { IMessagingProvider } from "dc-messaging"
-import { ETHInstance, SolidityTypeValue } from "dc-ethereum-utils"
+import { IMessagingProvider } from "@daocasino/dc-messaging"
+import { ETHInstance, SolidityTypeValue } from "@daocasino/dc-ethereum-utils"
 import Contract from "web3/eth/contract"
 import { GameInfo } from "./GameInfo"
 

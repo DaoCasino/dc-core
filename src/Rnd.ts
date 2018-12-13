@@ -1,6 +1,6 @@
 import BN from "bn.js"
-import { Logger } from "dc-logging"
-import {add0x, remove0x, sha3} from "dc-ethereum-utils"
+import { Logger } from "@daocasino/dc-logging"
+import {add0x, remove0x, sha3} from "@daocasino/dc-ethereum-utils"
 
 const logger = new Logger('RND:')
 

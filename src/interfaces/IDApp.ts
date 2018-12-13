@@ -1,5 +1,5 @@
-import { IMessagingProvider } from "dc-messaging"
-import { ETHInstance } from "dc-ethereum-utils"
+import { IMessagingProvider } from "@daocasino/dc-messaging"
+import { ETHInstance } from "@daocasino/dc-ethereum-utils"
 import { IGameLogic, DAppInstanceView } from "./index"
 
 export interface DAppParams {

@@ -16,10 +16,10 @@ import {
   sha3, makeSeed,
   dec2bet, bets2decs, bet2dec, betsSumm, remove0x, flatternArr,
   SolidityTypeValue
-} from "dc-ethereum-utils"
+} from "@daocasino/dc-ethereum-utils"
 
-import { Logger } from "dc-logging"
-import { config } from "dc-configs"
+import { Logger } from "@daocasino/dc-logging"
+import { config } from "@daocasino/dc-configs"
 import { ChannelState } from "./ChannelState"
 import { EventEmitter } from "events"
 import { Rsa } from "./Rsa"

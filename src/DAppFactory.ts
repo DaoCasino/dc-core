@@ -1,13 +1,13 @@
 import { IGameLogic } from "./interfaces/index"
 
-import { Eth } from "dc-ethereum-utils"
-import { Logger } from "dc-logging"
+import { Eth } from "@daocasino/dc-ethereum-utils"
+import { Logger } from "@daocasino/dc-logging"
 
-import { config, BlockchainNetwork, IConfig } from "dc-configs"
+import { config, BlockchainNetwork, IConfig } from "@daocasino/dc-configs"
 
 import { GlobalGameLogicStore } from "./GlobalGameLogicStore"
 import { DApp } from "./DApp"
-import { IMessagingProvider } from "dc-messaging"
+import { IMessagingProvider } from "@daocasino/dc-messaging"
 import { DAppPlayerInstance } from "./DAppPlayerInstance"
 
 export class DAppFactory {

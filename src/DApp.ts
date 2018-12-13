@@ -1,14 +1,14 @@
 import { IDApp, DAppParams, UserId, GameInfo } from "./interfaces/index"
 
-import { config } from "dc-configs"
+import { config } from "@daocasino/dc-configs"
 
-import { Logger } from "dc-logging"
+import { Logger } from "@daocasino/dc-logging"
 import Contract from "web3/eth/contract"
 import { setInterval } from "timers"
 import { EventEmitter } from "events"
 import { DAppPlayerInstance } from "./DAppPlayerInstance"
 import { DAppDealerInstance } from "./DAppDealerInstance"
-import * as Utils from "dc-ethereum-utils"
+import * as Utils from "@daocasino/dc-ethereum-utils"
 
 const log = new Logger("DAppInstance")
 
