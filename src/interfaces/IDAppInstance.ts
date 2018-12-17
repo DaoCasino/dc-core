@@ -60,6 +60,12 @@ export interface GameData {
   // Some other data from game-developer
   custom?: any
 }
+export interface FullGameData {
+  seed: string
+  randomRanges: GameData["randomRanges"]
+  custom?: GameData["custom"]
+}
+
 export interface PlayParams {
   // array of user bets on current round [2,1,4]
   userBets: number[]
@@ -158,11 +164,7 @@ export interface IDAppDealerInstance extends IDAppInstance {
   callPlay(
     userBets: PlayParams["userBets"], // array of humanreadable format token value 1 = 1 * 10**18
     // specified data for game
-    gameData: {
-      seed: string
-      randomRanges: GameData["randomRanges"]
-      custom?: GameData["custom"]
-    },
+    gameData: FullGameData,
     session: number, // aka nonce, every call session++ on channelState
     sign: string // ETHsign of sended data / previous args
   ): Promise<{
