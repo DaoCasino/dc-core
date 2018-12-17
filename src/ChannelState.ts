@@ -1,6 +1,7 @@
-import { Eth, ETHInstance, sha3, SolidityTypeValue } from "dc-ethereum-utils"
+import { Eth, ETHInstance, sha3, SolidityTypeValue } from "@daocasino/dc-ethereum-utils"
 import { State, FullGameData, PlayParams } from './index'
-import { Logger } from "dc-logging"
+import { Logger } from "@daocasino/dc-logging"
+
 const log = new Logger("tests")
 
 

@@ -1,6 +1,6 @@
-import { config } from "dc-configs"
-import { Logger } from "dc-logging"
-import { Eth, makeSeed } from "dc-ethereum-utils"
+import { config } from "@daocasino/dc-configs"
+import { Logger } from "@daocasino/dc-logging"
+import { Eth, makeSeed } from "@daocasino/dc-ethereum-utils"
 import { generateRandom } from "../Rnd"
 
 const log = new Logger("generateRND:Test:")
