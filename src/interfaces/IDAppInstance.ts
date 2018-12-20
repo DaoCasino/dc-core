@@ -1,5 +1,5 @@
 import { IMessagingProvider } from "@daocasino/dc-messaging"
-import { ETHInstance, SolidityTypeValue } from "@daocasino/dc-ethereum-utils"
+import { BlockchainUtilsInstance, SolidityTypeValue } from "@daocasino/dc-blockchain-types"
 import Contract from "web3/eth/contract"
 import { GameInfo } from "./GameInfo"
 
@@ -16,7 +16,7 @@ export interface DAppInstanceParams {
   roomProvider: IMessagingProvider
   onFinish: (userId: UserId) => void
   gameInfo: GameInfo
-  Eth: ETHInstance
+  Eth: BlockchainUtilsInstance
 }
 
 export interface DAppInstanceView {

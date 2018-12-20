@@ -3,7 +3,8 @@ import { expect } from "chai"
 import crypto from "crypto"
 import { Rsa } from "../Rsa"
 
-import { SolidityTypeValue, sha3, remove0x } from "@daocasino/dc-ethereum-utils"
+import { sha3, remove0x } from "@daocasino/dc-ethereum-utils"
+import { SolidityTypeValue } from "@daocasino/dc-blockchain-types"
 import { Logger } from "@daocasino/dc-logging"
 
 const log = new Logger("PingService test")

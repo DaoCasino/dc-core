@@ -25,9 +25,8 @@ import {
   bets2decs,
   betsSumm,
   flatternArr,
-  SolidityTypeValue
 } from "@daocasino/dc-ethereum-utils"
-
+import { SolidityTypeValue } from '@daocasino/dc-blockchain-types'
 import { Logger } from "@daocasino/dc-logging"
 import { config } from "@daocasino/dc-configs"
 import { ChannelState } from "./ChannelState"

@@ -15,8 +15,9 @@ import {
 import {
   sha3, makeSeed,
   dec2bet, bets2decs, bet2dec, betsSumm, remove0x, flatternArr,
-  SolidityTypeValue
 } from "@daocasino/dc-ethereum-utils"
+
+import { SolidityTypeValue } from '@daocasino/dc-blockchain-types'
 
 import { Logger } from "@daocasino/dc-logging"
 import { config } from "@daocasino/dc-configs"
