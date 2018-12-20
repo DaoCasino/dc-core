@@ -1,4 +1,5 @@
-import { Eth, ETHInstance, sha3, SolidityTypeValue } from "@daocasino/dc-ethereum-utils"
+import { Eth, sha3 } from "@daocasino/dc-ethereum-utils"
+import { SolidityTypeValue, BlockchainUtilsInstance } from '@daocasino/dc-blockchain-types'
 import { State, FullGameData, PlayParams } from './index'
 import { Logger } from "@daocasino/dc-logging"
 
@@ -7,7 +8,7 @@ const log = new Logger("tests")
 
 export class ChannelState {
   private _id: string // channel id
-  private Eth: ETHInstance
+  private Eth: BlockchainUtilsInstance
   private _session: number = 0 // aka nonce
   private _totalBet = 0
   private _profit = 0
@@ -33,7 +34,7 @@ export class ChannelState {
   }
 
   constructor(
-    eth: ETHInstance,
+    eth: BlockchainUtilsInstance,
     channelId: string,
     playerOpenkey: string,
     bankrollerOpenkey: string,

@@ -1,5 +1,5 @@
 import { IMessagingProvider } from "@daocasino/dc-messaging"
-import { ETHInstance } from "@daocasino/dc-ethereum-utils"
+import { BlockchainUtilsInstance } from "@daocasino/dc-blockchain-types"
 import { IGameLogic, DAppInstanceView } from "./index"
 import { EventEmitter } from "events"
 import { IDAppPlayerInstance } from "./IDAppInstance"
@@ -12,7 +12,7 @@ export interface DAppParams {
   gameLogicFunction: () => IGameLogic
   gameContractAddress: string
   roomProvider: IMessagingProvider
-  Eth: ETHInstance
+  Eth: BlockchainUtilsInstance
 }
 
 export interface IDApp extends EventEmitter {
