@@ -26,10 +26,10 @@ import {
   betsSumm,
   flatternArr,
   SolidityTypeValue
-} from "dc-ethereum-utils"
+} from "@daocasino/dc-ethereum-utils"
 
-import { Logger } from "dc-logging"
-import { config } from "dc-configs"
+import { Logger } from "@daocasino/dc-logging"
+import { config } from "@daocasino/dc-configs"
 import { ChannelState } from "./ChannelState"
 import { EventEmitter } from "events"
 import { Rsa } from "./Rsa"
@@ -290,6 +290,8 @@ export class DAppPlayerInstance extends EventEmitter
 
     // Add entropy(seed) to gameData
     const gameData = { seed: makeSeed(), ...params.gameData }
+    
+    this.channelState.savePlayData(userBets, gameData)
 
     const flatRanges = flatternArr(gameData.randomRanges)
     // Create gameData hash with rules from logic.js
@@ -319,10 +321,15 @@ export class DAppPlayerInstance extends EventEmitter
       await this._params.Eth.signHash(roundHash)
     )
 
+    if (process.env.TEST_DISPUTE) {
+      this.openDispute()
+      return
+    }
+
     // check our random hash, dealer sign
     if (!this.pRsa.verify(roundHash, dealerRes.rndSig)) {
       throw new Error("Invalid random sig")
-      // this.openDisputeUI()
+      this.openDispute()
     }
 
     const randomsArr = generateRandom(gameData.randomRanges, dealerRes.rndSig)
@@ -331,7 +338,7 @@ export class DAppPlayerInstance extends EventEmitter
     const playResult = this._gameLogic.play(userBets, gameData, randomsArr)
 
     if (playResult.profit !== dealerRes.playResult.profit) {
-      this.openDisputeUI()
+      this.openDispute()
     }
 
     // Create our channel state
@@ -444,25 +451,78 @@ export class DAppPlayerInstance extends EventEmitter
     }
   }
 
-  openDispute() {
-    // updateChannel
-    // get channel state
+  async updateChannel(){
+    const lastState = this.channelState.getFullState()
+
+    const updateChannelTX = await this._params.Eth.sendTransaction(
+      this._params.gameContractInstance,
+      "updateChannel",
+      [
+        lastState.data._id,
+        "" + lastState.data._playerBalance,
+        "" + lastState.data._bankrollerBalance,
+        "" + lastState.data._totalBet,
+        "" + lastState.data._session,
+        lastState.signs[this.channelState.bankrollerOpenkey]
+      ]
+    )
+
+    return updateChannelTX
+  }
+
+  async openDispute() {
+    await this.updateChannel()
+    
+    const lastState = this.channelState.getState()
+    const playData = this.channelState.getPlayData()
+
+    const gameDataHash = sha3(
+      ...[
+        { t: "bytes32", v: playData.gameData.seed },
+        { t: "uint256", v: flatternArr(playData.gameData.randomRanges) }
+      ].concat( Object.values(playData.gameData.custom) )
+    )  
+
+    const openerSignature = this._params.Eth.signData([
+      { t: 'bytes32', v: lastState._id },
+      { t: 'uint256', v: ""+lastState._session },
+      { t: 'uint256', v: ""+lastState._totalBet },
+      { t: 'bytes32', v: gameDataHash }
+    ])
+
+console.log('')
+console.log('')
+console.log('openDispute')
+console.log(playData)
+console.log('')
+console.log('')
     // openDispute
-    //   let res = await player.sendTransaction(GameContract, 'updateChannel', [
-    //       id,
-    //       playerBalance,
-    //       bankrollerBalance,
-    //       totalBet,
-    //       session,
-    //       bankrollerSignature
-    //   ])
-    //  let res = await player.sendTransaction(GameContract, 'openDispute', [
-    //      id,
-    //      session,
-    //      bets,
-    //      gameData,
-    //      playerSignature
-    //  ])
+    const openDisputeTX = await this._params.Eth.sendTransaction(
+      this._params.gameContractInstance,
+      "openDispute",
+      [
+        lastState._id,
+        "" + lastState._session,
+        playData.userBets,
+        playData.gameData,
+        openerSignature
+      ]
+    )
+
+    // check channel 
+    // const channel = await this._params.gameContractInstance.methods
+    //   .channels(this.channelId)
+    //   .call()
+
+    // if (
+    //   channel.state === "1" &&
+    //   channel.player.toLowerCase() === this._params.userId.toLowerCase() &&
+    //   channel.bankroller.toLowerCase() ===
+    //     this._params.Eth.getAccount().address.toLowerCase() &&
+    //   "" + channel.playerBalance === "" + this.playerDepositWei &&
+    //   "" + channel.bankrollerBalance === "" + this.bankrollerDepositWei
+    // ) {
+
   }
 
   openDisputeUI() {
