@@ -15,7 +15,7 @@ import {
 import {
   sha3, makeSeed,
   dec2bet, bets2decs, bet2dec, betsSumm, remove0x, flatternArr,
-  SolidityTypeValue, generateStructoreForSign
+  SolidityTypeValue, generateStructForSign
 } from "@daocasino/dc-ethereum-utils"
 
 import { Logger } from "@daocasino/dc-logging"
@@ -87,7 +87,7 @@ export class DAppDealerInstance extends EventEmitter
     //   { t: "uint256", v: "" + playerDeposit },
     // ]
 
-    const toRecover: SolidityTypeValue[] = generateStructoreForSign(
+    const toRecover: SolidityTypeValue[] = generateStructForSign(
       channelId,
       playerAddress,
       `${playerDeposit}`
@@ -157,7 +157,7 @@ export class DAppDealerInstance extends EventEmitter
       //   { t: "bytes", v: e }
       // ]
 
-      const toSign: SolidityTypeValue[] = generateStructoreForSign(
+      const toSign: SolidityTypeValue[] = generateStructForSign(
         channelId,
         playerAddress,
         bankrollerAddress,
@@ -259,7 +259,7 @@ export class DAppDealerInstance extends EventEmitter
     // msg data for hashing by sha3
     // for check sig and random genrate
     const hashGameData = sha3( 
-      ...generateStructoreForSign(
+      ...generateStructForSign(
         gameData.seed,
         flatternArr(gameData.randomRanges)
       ).concat(Object.values(gameData.custom))
@@ -274,7 +274,7 @@ export class DAppDealerInstance extends EventEmitter
     //   { t: "bytes32", v: hashGameData },
     // ]
 
-    const msgData: SolidityTypeValue[] = generateStructoreForSign(
+    const msgData: SolidityTypeValue[] = generateStructForSign(
       lastState._id,
       `${curSession}`,
       bets2decs(userBets),
@@ -328,7 +328,7 @@ export class DAppDealerInstance extends EventEmitter
     //   { t: "bool", v: true }
     // ]
 
-    const consentData: SolidityTypeValue[] = generateStructoreForSign(
+    const consentData: SolidityTypeValue[] = generateStructForSign(
       lastState._id,
       `${lastState._playerBalance}`,
       `${lastState._bankrollerBalance}`,

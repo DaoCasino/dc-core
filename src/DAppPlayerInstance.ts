@@ -26,7 +26,7 @@ import {
   betsSumm,
   flatternArr,
   SolidityTypeValue,
-  generateStructoreForSign
+  generateStructForSign
 } from "@daocasino/dc-ethereum-utils"
 
 import { Logger } from "@daocasino/dc-logging"
@@ -144,7 +144,7 @@ export class DAppPlayerInstance extends EventEmitter
     //   { t: "uint", v: "" + args.playerDeposit }
     // ]
 
-    const argsToSign: SolidityTypeValue[] = generateStructoreForSign(
+    const argsToSign: SolidityTypeValue[] = generateStructForSign(
       args.channelId,
       args.playerAddress,
       `${args.playerDeposit}`
@@ -223,7 +223,7 @@ export class DAppPlayerInstance extends EventEmitter
     //   { t: "bytes", v: peerResponse.e }
     // ]
 
-    const toRecover: SolidityTypeValue[] = generateStructoreForSign(
+    const toRecover: SolidityTypeValue[] = generateStructForSign(
       this.channelId,
       args.playerAddress,
       peerResponse.bankrollerAddress,
@@ -314,7 +314,7 @@ export class DAppPlayerInstance extends EventEmitter
     const flatRanges = flatternArr(gameData.randomRanges)
     // Create gameData hash with rules from logic.js
     const hashGameData = sha3(
-      ...generateStructoreForSign(
+      ...generateStructForSign(
         gameData.seed,
         flatRanges
       ).concat(Object.values(gameData.custom))
@@ -332,7 +332,7 @@ export class DAppPlayerInstance extends EventEmitter
     //   { t: "uint256", v: bets2decs(userBets) },
     //   { t: "bytes32", v: hashGameData }
     // ]
-    const msgData: SolidityTypeValue[] = generateStructoreForSign(
+    const msgData: SolidityTypeValue[] = generateStructForSign(
       this.channelId,
       `${this.channelState.getSession()}`,
       bets2decs(userBets),
@@ -412,7 +412,7 @@ export class DAppPlayerInstance extends EventEmitter
     //   { t: "bool", v: true }
     // ]
 
-    const closeChannelData: SolidityTypeValue[] = generateStructoreForSign(
+    const closeChannelData: SolidityTypeValue[] = generateStructForSign(
       lastState._id,
       `${lastState._playerBalance}`,
       `${lastState._bankrollerBalance}`,
@@ -515,7 +515,7 @@ export class DAppPlayerInstance extends EventEmitter
     const playData = this.channelState.getPlayData()
 
     const gameDataHash = sha3(
-      ...generateStructoreForSign(
+      ...generateStructForSign(
         playData.gameData.seed,
         flatternArr(playData.gameData.randomRanges)
       ).concat(Object.values(playData.gameData.custom))
@@ -531,7 +531,7 @@ export class DAppPlayerInstance extends EventEmitter
     //   { t: 'bytes32', v: gameDataHash }
     // ])
     const openerSignature = this._params.Eth.signData(
-      generateStructoreForSign(
+      generateStructForSign(
         lastState._id,
         `${lastState._session}`,
         `${lastState._totalBet}`,
