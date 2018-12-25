@@ -15,7 +15,7 @@ import {
 import {
   sha3, makeSeed,
   dec2bet, bets2decs, bet2dec, betsSumm, remove0x, flatternArr,
-  SolidityTypeValue
+  SolidityTypeValue, generateStructoreForSign
 } from "@daocasino/dc-ethereum-utils"
 
 import { Logger } from "@daocasino/dc-logging"
@@ -81,11 +81,17 @@ export class DAppDealerInstance extends EventEmitter
     /** Parse params */
     const { channelId, playerAddress, playerDeposit } = params
 
-    const toRecover: SolidityTypeValue[] = [
-      { t: "bytes32", v: channelId },
-      { t: "address", v: playerAddress },
-      { t: "uint256", v: "" + playerDeposit },
-    ]
+    // const toRecover: SolidityTypeValue[] = [
+    //   { t: "bytes32", v: channelId },
+    //   { t: "address", v: playerAddress },
+    //   { t: "uint256", v: "" + playerDeposit },
+    // ]
+
+    const toRecover: SolidityTypeValue[] = generateStructoreForSign(
+      channelId,
+      playerAddress,
+      `${playerDeposit}`
+    )
 
     //  check balance
     const balances = await this._params.Eth.getBalances()
@@ -140,16 +146,26 @@ export class DAppDealerInstance extends EventEmitter
       }
 
       // Args for open channel transaction
-      const toSign: SolidityTypeValue[] = [
-        { t: "bytes32", v: channelId },
-        { t: "address", v: playerAddress },
-        { t: "address", v: bankrollerAddress },
-        { t: "uint256", v: playerDepositWei },
-        { t: "uint256", v: bankrollerDepositWei },
-        { t: "uint256", v: openingBlock },
-        { t: "bytes", v: n },
-        { t: "bytes", v: e }
-      ]
+      // const toSign: SolidityTypeValue[] = [
+      //   { t: "bytes32", v: channelId },
+      //   { t: "address", v: playerAddress },
+      //   { t: "address", v: bankrollerAddress },
+      //   { t: "uint256", v: playerDepositWei },
+      //   { t: "uint256", v: bankrollerDepositWei },
+      //   { t: "uint256", v: openingBlock },
+      //   { t: "bytes", v: n },
+      //   { t: "bytes", v: e }
+      // ]
+
+      const toSign: SolidityTypeValue[] = generateStructoreForSign(
+        channelId,
+        playerAddress,
+        bankrollerAddress,
+        playerDepositWei,
+        bankrollerDepositWei,
+        openingBlock,
+        n, e
+      )
 
       /** Sign args for open channel */
       const signature = this._params.Eth.signData(toSign)
@@ -242,17 +258,28 @@ export class DAppDealerInstance extends EventEmitter
 
     // msg data for hashing by sha3
     // for check sig and random genrate
-    const hashGameData = sha3( ...[
-      { t: "bytes32", v: gameData.seed },
-      { t: "uint256", v: flatternArr(gameData.randomRanges) }
-      ].concat( Object.values(gameData.custom) )
+    const hashGameData = sha3( 
+      ...generateStructoreForSign(
+        gameData.seed,
+        flatternArr(gameData.randomRanges)
+      ).concat(Object.values(gameData.custom))
+      // { t: "bytes32", v: gameData.seed },
+      // { t: "uint256", v: flatternArr(gameData.randomRanges) }
+      // ].concat( Object.values(gameData.custom) )
     )
-    const msgData: SolidityTypeValue[] = [
-      { t: "bytes32", v: lastState._id },
-      { t: "uint256", v: ''+curSession },
-      { t: "uint256", v: bets2decs(userBets) },
-      { t: "bytes32", v: hashGameData },
-    ]
+    // const msgData: SolidityTypeValue[] = [
+    //   { t: "bytes32", v: lastState._id },
+    //   { t: "uint256", v: ''+curSession },
+    //   { t: "uint256", v: bets2decs(userBets) },
+    //   { t: "bytes32", v: hashGameData },
+    // ]
+
+    const msgData: SolidityTypeValue[] = generateStructoreForSign(
+      lastState._id,
+      `${curSession}`,
+      bets2decs(userBets),
+      hashGameData
+    )
     const msgHash = sha3(...msgData)
 
     // Check msg data signature
@@ -292,14 +319,23 @@ export class DAppDealerInstance extends EventEmitter
     const lastState = this.channelState.getState()
 
     /** create structure for recover signature */
-    const consentData: SolidityTypeValue[] = [
-      { t: "bytes32", v: lastState._id },
-      { t: "uint", v: "" + lastState._playerBalance },
-      { t: "uint", v: "" + lastState._bankrollerBalance },
-      { t: "uint", v: "" + lastState._totalBet },
-      { t: "uint", v: "" + lastState._session },
-      { t: "bool", v: true }
-    ]
+    // const consentData: SolidityTypeValue[] = [
+    //   { t: "bytes32", v: lastState._id },
+    //   { t: "uint", v: "" + lastState._playerBalance },
+    //   { t: "uint", v: "" + lastState._bankrollerBalance },
+    //   { t: "uint", v: "" + lastState._totalBet },
+    //   { t: "uint", v: "" + lastState._session },
+    //   { t: "bool", v: true }
+    // ]
+
+    const consentData: SolidityTypeValue[] = generateStructoreForSign(
+      lastState._id,
+      `${lastState._playerBalance}`,
+      `${lastState._bankrollerBalance}`,
+      `${lastState._totalBet}`,
+      `${lastState._session}`,
+      true
+    )
     const consentHash = sha3(...consentData)
     /**
      * Recover address with signature and params
