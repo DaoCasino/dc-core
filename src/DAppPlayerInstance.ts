@@ -138,12 +138,6 @@ export class DAppPlayerInstance extends EventEmitter
     }
 
     /** Sign peer args */
-    // const argsToSign: SolidityTypeValue[] = [
-    //   { t: "bytes32", v: args.channelId },
-    //   { t: "address", v: args.playerAddress },
-    //   { t: "uint", v: "" + args.playerDeposit }
-    // ]
-
     const argsToSign: SolidityTypeValue[] = generateStructForSign(
       args.channelId,
       args.playerAddress,
@@ -212,17 +206,6 @@ export class DAppPlayerInstance extends EventEmitter
      * with response if recover open key
      * not equal bankroller address throw error
      */
-    // const toRecover: SolidityTypeValue[] = [
-    //   { t: "bytes32", v: this.channelId },
-    //   { t: "address", v: args.playerAddress },
-    //   { t: "address", v: peerResponse.bankrollerAddress },
-    //   { t: "uint256", v: "" + bet2dec(playerDeposit) },
-    //   { t: "uint256", v: "" + peerResponse.bankrollerDepositWei },
-    //   { t: "uint256", v: peerResponse.openingBlock },
-    //   { t: "bytes", v: peerResponse.n },
-    //   { t: "bytes", v: peerResponse.e }
-    // ]
-
     const toRecover: SolidityTypeValue[] = generateStructForSign(
       this.channelId,
       args.playerAddress,
@@ -318,20 +301,10 @@ export class DAppPlayerInstance extends EventEmitter
         gameData.seed,
         flatRanges
       ).concat(Object.values(gameData.custom))
-      // ...[
-      //   { t: "bytes32", v: gameData.seed },
-      //   { t: "uint256", v: flatRanges }
-      // ].concat( Object.values(gameData.custom) )
     )    
 
     // hash of all data use for generate random
     // and sign sended message
-    // const msgData: SolidityTypeValue[] = [
-    //   { t: "bytes32", v: this.channelId },
-    //   { t: "uint256", v: "" + this.channelState.getSession() },
-    //   { t: "uint256", v: bets2decs(userBets) },
-    //   { t: "bytes32", v: hashGameData }
-    // ]
     const msgData: SolidityTypeValue[] = generateStructForSign(
       this.channelId,
       `${this.channelState.getSession()}`,
@@ -403,15 +376,6 @@ export class DAppPlayerInstance extends EventEmitter
      */
     // const playerAddress = this._params.Eth.getAccount().address
     const lastState = this.channelState.getState()
-    // const closeChannelData: SolidityTypeValue[] = [
-    //   { t: "bytes32", v: lastState._id },
-    //   { t: "uint", v: "" + lastState._playerBalance },
-    //   { t: "uint", v: "" + lastState._bankrollerBalance },
-    //   { t: "uint", v: "" + lastState._totalBet },
-    //   { t: "uint", v: "" + lastState._session },
-    //   { t: "bool", v: true }
-    // ]
-
     const closeChannelData: SolidityTypeValue[] = generateStructForSign(
       lastState._id,
       `${lastState._playerBalance}`,
@@ -519,17 +483,8 @@ export class DAppPlayerInstance extends EventEmitter
         playData.gameData.seed,
         flatternArr(playData.gameData.randomRanges)
       ).concat(Object.values(playData.gameData.custom))
-      // ...[
-      //   { t: "bytes32", v: playData.gameData.seed },
-      //   { t: "uint256", v: flatternArr(playData.gameData.randomRanges) }
-      // ].concat( Object.values(playData.gameData.custom) )
     )  
-    // const openerSignature = this._params.Eth.signData([
-    //   { t: 'bytes32', v: lastState._id },
-    //   { t: 'uint256', v: ""+lastState._session },
-    //   { t: 'uint256', v: ""+lastState._totalBet },
-    //   { t: 'bytes32', v: gameDataHash }
-    // ])
+
     const openerSignature = this._params.Eth.signData(
       generateStructForSign(
         lastState._id,
