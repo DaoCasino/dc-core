@@ -7,6 +7,10 @@
   },
   "include": ["src/**/*"],
   "references": [
-    { "path": "../dc-blockchain-types" }
+    { "path": "../dc-messaging" },
+    { "path": "../dc-ethereum-utils" },
+    { "path": "../dc-blockchain-types" },
+    { "path": "../dc-logging" },
+    { "path": "../dc-configs" }
   ]
 }
