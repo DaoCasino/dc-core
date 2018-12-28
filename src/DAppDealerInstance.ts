@@ -1,29 +1,35 @@
 import {
-  IRsa,
-  GameData, State,
-  IGameLogic,
-  ConnectParams,
   ConsentResult,
-  SignedResponse,
-  OpenChannelParams,
-  IDAppPlayerInstance,
   DAppInstanceParams,
+  GameData,
+  GetChannelDataParams,
   IDAppDealerInstance,
-  GetChannelDataParams
-} from "./index"
+  IDAppPlayerInstance,
+  IGameLogic,
+  IRsa,
+  OpenChannelParams,
+  SignedResponse,
+  State
+} from './index'
 
 import {
-  sha3, makeSeed,
-  dec2bet, bets2decs, bet2dec, betsSumm, remove0x, flatternArr,
-  SolidityTypeValue, generateStructForSign
-} from "@daocasino/dc-ethereum-utils"
+  bet2dec,
+  bets2decs,
+  betsSumm,
+  flatternArr,
+  generateStructForSign,
+  sha3,
+  SolidityTypeValue
+} from '@daocasino/dc-ethereum-utils'
 
-import { Logger } from "@daocasino/dc-logging"
-import { config } from "@daocasino/dc-configs"
-import { ChannelState } from "./ChannelState"
-import { EventEmitter } from "events"
-import { Rsa } from "./Rsa"
-import { generateRandom } from "./Rnd"
+import { Logger } from '@daocasino/dc-logging'
+import { config } from '@daocasino/dc-configs'
+import { ChannelState } from './ChannelState'
+import { EventEmitter } from 'events'
+import { Rsa } from './Rsa'
+// import { DCStatisticClient } from '@daocasino/statis'
+import { generateRandom } from './Rnd'
+
 const log = new Logger("DealerInstance")
 
 export class DAppDealerInstance extends EventEmitter
