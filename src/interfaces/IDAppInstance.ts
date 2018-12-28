@@ -1,7 +1,9 @@
-import { IMessagingProvider } from "@daocasino/dc-messaging"
-import { ETHInstance } from "@daocasino/dc-ethereum-utils"
-import Contract from "web3/eth/contract"
-import { GameInfo } from "./GameInfo"
+import { IMessagingProvider } from '@daocasino/dc-messaging'
+import { ETHInstance } from '@daocasino/dc-ethereum-utils'
+import { GameInfo } from './GameInfo'
+import { ProtocolType } from '@daocasino/dc-statistics-client'
+
+import Contract from 'web3/eth/contract'
 
 export type UserId = string
 
@@ -16,7 +18,14 @@ export interface DAppInstanceParams {
   roomProvider: IMessagingProvider
   onFinish: (userId: UserId) => void
   gameInfo: GameInfo
-  Eth: ETHInstance
+  Eth: ETHInstance,
+  statistics?: StatisticsServerConnectParams
+}
+
+export interface StatisticsServerConnectParams {
+  authKey: string,
+  host: string,
+  protocol: ProtocolType
 }
 
 export interface DAppInstanceView {
@@ -26,8 +35,10 @@ export interface DAppInstanceView {
   profit: number
   playerAddress: string
 }
+
 export interface IDAppInstance {
   on(event: string, func: (data: any) => void)
+
   start(): Promise<void> | void
 }
 
@@ -44,9 +55,11 @@ export interface OpenChannelParams {
   n: string
   e: string
 }
+
 export interface ConnectParams {
   playerDeposit: number
 }
+
 export interface GetChannelDataParams extends ConnectParams {
   playerAddress: string
   channelId: string
@@ -60,10 +73,11 @@ export interface GameData {
   // Some other data from game-developer
   custom?: any
 }
+
 export interface FullGameData {
   seed: string
-  randomRanges: GameData["randomRanges"]
-  custom?: GameData["custom"]
+  randomRanges: GameData['randomRanges']
+  custom?: GameData['custom']
 }
 
 export interface PlayParams {
@@ -103,6 +117,7 @@ interface PeerBalance {
   bankroller: number
   player: number
 }
+
 export interface ChannelStateData {
   deposits: PeerBalance
   balance: PeerBalance
@@ -110,6 +125,8 @@ export interface ChannelStateData {
 }
 
 export interface IDAppPlayerInstance extends IDAppInstance {
+  getChannelStateData: () => ChannelStateData
+
   // find bankroller in p2p network and "connect"
   connect(connectData: ConnectParams): Promise<any>
 
@@ -118,8 +135,6 @@ export interface IDAppPlayerInstance extends IDAppInstance {
     openChannelData: OpenChannelParams,
     signature: string
   ): Promise<any>
-
-  getChannelStateData: () => ChannelStateData
 
   /*
     Call game logic function on dealer side and client side
@@ -162,7 +177,7 @@ export interface IDAppDealerInstance extends IDAppInstance {
     Call game logic function on dealer side
    */
   callPlay(
-    userBets: PlayParams["userBets"], // array of humanreadable format token value 1 = 1 * 10**18
+    userBets: PlayParams['userBets'], // array of humanreadable format token value 1 = 1 * 10**18
     // specified data for game
     gameData: FullGameData,
     session: number, // aka nonce, every call session++ on channelState
