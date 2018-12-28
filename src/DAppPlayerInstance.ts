@@ -79,7 +79,10 @@ export class DAppPlayerInstance extends EventEmitter
     return this.channelState.getData()
   }
 
-  async connect(connectData: ConnectParams): Promise<any> {
+  async getParamsForOpenChannel(connectData: ConnectParams): Promise<{
+    openChannelParams: OpenChannelParams,
+    signature: string
+  }> {
     /** Parse method params */
     const { playerDeposit } = connectData
 
@@ -226,14 +229,19 @@ export class DAppPlayerInstance extends EventEmitter
       throw new Error("Invalid signature")
     }
 
+    return { openChannelParams: peerResponse, signature }
+  }
+
+  async connect(connectData: ConnectParams): Promise<any> {
+    const { openChannelParams, signature } = await this.getParamsForOpenChannel(connectData)
     /** Open channel with params */
-    const channelStatus = await this.openChannel(peerResponse, signature)
+    const channelStatus = await this.openChannel(openChannelParams, signature)
     if (channelStatus.state === "1") {
       this.emit("info", {
         event: "Channel open",
-        data: { channelStatus, peerResponse }
+        data: { channelStatus, openChannelParams }
       })
-      return { ...channelStatus, ...peerResponse }
+      return { ...channelStatus, ...openChannelParams }
     }
   }
 
@@ -368,7 +376,10 @@ export class DAppPlayerInstance extends EventEmitter
     }
   }
 
-  async disconnect() {
+  async getParamsForCloseChannel(): Promise<{
+    lastState: CloseChannelParams,
+    consentSignature: string
+  }> {
     /**
      * Get player address and last state for close
      * channel and create structure for sign last state
@@ -407,9 +418,18 @@ export class DAppPlayerInstance extends EventEmitter
       throw new Error("Invalid signature")
     }
 
-    /** Send close channel transaction */
-    const closeChannelTX = await this.closeChannel(lastState, consentSignature)
-    return { ...lastState, ...closeChannelTX }
+    return { lastState, consentSignature }
+  }
+
+  async disconnect() {
+    try {
+      const { lastState, consentSignature } = await this.getParamsForCloseChannel()
+      /** Send close channel transaction */
+      const closeChannelTX = await this.closeChannel(lastState, consentSignature)
+      return { ...lastState, ...closeChannelTX }
+    } catch (error) {
+      throw error
+    }
   }
 
   async closeChannel(
@@ -419,11 +439,11 @@ export class DAppPlayerInstance extends EventEmitter
     /** Generate params for close channel with method params */
     const closeParams = [
       params._id,
-      "" + params._playerBalance,
-      "" + params._bankrollerBalance,
-      "" + params._totalBet,
-      "" + params._session,
-      paramsSignature
+      `${params._playerBalance}`,
+      `${params._bankrollerBalance}`,
+      `${params._totalBet}`,
+      `${params._session}`,
+      `${paramsSignature}`
     ]
 
     try {
@@ -452,7 +472,7 @@ export class DAppPlayerInstance extends EventEmitter
     }
   }
 
-  async updateChannel(){
+  async updateChannel() {
     const lastState = this.channelState.getFullState()
 
     const updateChannelTX = await this._params.Eth.sendTransaction(
