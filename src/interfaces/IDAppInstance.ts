@@ -1,9 +1,9 @@
 import { IMessagingProvider } from '@daocasino/dc-messaging'
 import { ETHInstance } from '@daocasino/dc-ethereum-utils'
 import { GameInfo } from './GameInfo'
-import { ProtocolType } from '@daocasino/dc-statistics-client'
 
 import Contract from 'web3/eth/contract'
+import { IStatisticsServerConnectParams } from './IStatisticsServerConnectParams'
 
 export type UserId = string
 
@@ -19,13 +19,7 @@ export interface DAppInstanceParams {
   onFinish: (userId: UserId) => void
   gameInfo: GameInfo
   Eth: ETHInstance,
-  statistics?: StatisticsServerConnectParams
-}
-
-export interface StatisticsServerConnectParams {
-  authKey: string,
-  host: string,
-  protocol: ProtocolType
+  statistics?: IStatisticsServerConnectParams
 }
 
 export interface DAppInstanceView {
