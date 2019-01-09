@@ -1,60 +1,69 @@
 import {
-  IRsa,
-  GameData, State,
-  IGameLogic,
-  ConnectParams,
   ConsentResult,
-  SignedResponse,
-  OpenChannelParams,
-  IDAppPlayerInstance,
   DAppInstanceParams,
+  GameData,
+  GetChannelDataParams,
   IDAppDealerInstance,
-  GetChannelDataParams
-} from "./index"
+  IDAppPlayerInstance,
+  IGameLogic,
+  IRsa,
+  OpenChannelParams,
+  SignedResponse,
+  State
+} from './index'
+
+import { DCStatisticClient } from '@daocasino/dc-statistics-client'
 
 import {
-  sha3, makeSeed,
-  dec2bet, bets2decs, bet2dec, betsSumm, remove0x, flatternArr,
-  SolidityTypeValue, generateStructForSign
-} from "@daocasino/dc-ethereum-utils"
+  bet2dec,
+  bets2decs,
+  betsSumm,
+  flatternArr,
+  generateStructForSign,
+  sha3,
+  SolidityTypeValue
+} from '@daocasino/dc-ethereum-utils'
 
-import { Logger } from "@daocasino/dc-logging"
-import { config } from "@daocasino/dc-configs"
-import { ChannelState } from "./ChannelState"
-import { EventEmitter } from "events"
-import { Rsa } from "./Rsa"
-import { generateRandom } from "./Rnd"
-const log = new Logger("DealerInstance")
+import { Logger } from '@daocasino/dc-logging'
+import { config } from '@daocasino/dc-configs'
+import { ChannelState } from './ChannelState'
+import { EventEmitter } from 'events'
+import { Rsa } from './Rsa'
+import { generateRandom } from './Rnd'
+
+const log = new Logger('DealerInstance')
 
 export class DAppDealerInstance extends EventEmitter
   implements IDAppDealerInstance {
+  public Rsa: IRsa
+  public channel: any
+  public channelId: string
+  public channelState: ChannelState
+  public playerAddress: string
+  public playerDepositWei: string
+  public bankrollerDeposit: number
+  public bankrollerDepositWei: string
+
   private _peer: IDAppPlayerInstance
   private _dealer: IDAppDealerInstance
   private _config: any
   private _params: DAppInstanceParams
   private _gameLogic: IGameLogic
-
-  Rsa: IRsa
-  channel: any
-  channelId: string
-  channelState: ChannelState
-  playerAddress: string
-  playerDepositWei: string
-  bankrollerDeposit: number
-  bankrollerDepositWei: string
+  private statisticsClient: DCStatisticClient
 
   constructor(params: DAppInstanceParams) {
     super()
     this._params = params
     this._config = config.default
     this._gameLogic = this._params.gameLogicFunction()
+    this.statisticsClient = new DCStatisticClient(params.statistics)
 
     this.Rsa = new Rsa()
-    log.debug("Dealer instance init")
+    log.debug('Dealer instance init')
   }
 
   eventNames() {
-    return ["info"]
+    return ['info']
   }
 
   onPeerEvent(event: string, func: (data: any) => void) {
@@ -68,6 +77,7 @@ export class DAppDealerInstance extends EventEmitter
       true
     )
   }
+
   /**
    * Create structure for recover
    * and recover openkey with structure and signature
@@ -92,14 +102,14 @@ export class DAppDealerInstance extends EventEmitter
       throw new Error(
         `Not enough bet balance at address: ${
           this._params.Eth.getAccount().address
-        }`
+          }`
       )
     }
     if (balances.eth.balance < 0.01) {
       throw new Error(
         `Not enough ETH balance at address: ${
           this._params.Eth.getAccount().address
-        }`
+          }`
       )
     }
     const recoverOpenkey = this._params.Eth.recover(
@@ -107,7 +117,7 @@ export class DAppDealerInstance extends EventEmitter
       paramsSignature
     )
     if (recoverOpenkey.toLowerCase() !== playerAddress.toLowerCase()) {
-      throw new Error("Invalid signature")
+      throw new Error('Invalid signature')
     }
 
     this.channelId = channelId
@@ -121,9 +131,9 @@ export class DAppDealerInstance extends EventEmitter
       const openingBlock = await this._params.Eth.getBlockNumber()
       // Args for open channel transaction
       const { n, e } = this.Rsa.getNE()
-      log.debug("" + playerDeposit)
-      const playerDepositWei = ''+bet2dec(playerDeposit)
-      const bankrollerDepositWei = ''+bet2dec(bankrollerDeposit)
+      log.debug('' + playerDeposit)
+      const playerDepositWei = '' + bet2dec(playerDeposit)
+      const bankrollerDepositWei = '' + bet2dec(bankrollerDeposit)
       this.playerDepositWei = playerDepositWei
       this.bankrollerDepositWei = bankrollerDepositWei
 
@@ -164,12 +174,12 @@ export class DAppDealerInstance extends EventEmitter
       .call()
 
     if (
-      channel.state === "1" &&
+      channel.state === '1' &&
       channel.player.toLowerCase() === this._params.userId.toLowerCase() &&
       channel.bankroller.toLowerCase() ===
-        this._params.Eth.getAccount().address.toLowerCase() &&
-      "" + channel.playerBalance === "" + this.playerDepositWei &&
-      "" + channel.bankrollerBalance === "" + this.bankrollerDepositWei
+      this._params.Eth.getAccount().address.toLowerCase() &&
+      '' + channel.playerBalance === '' + this.playerDepositWei &&
+      '' + channel.bankrollerBalance === '' + this.bankrollerDepositWei
     ) {
       this.channel = channel
 
@@ -187,8 +197,8 @@ export class DAppDealerInstance extends EventEmitter
       )
       this.channelState.createState(0, 0)
 
-      this.emit("info", {
-        event: "OpenChannel checked",
+      this.emit('info', {
+        event: 'OpenChannel checked',
         data: {
           player: channel.player.toLowerCase(),
           bankroller: channel.bankroller.toLowerCase(),
@@ -196,9 +206,16 @@ export class DAppDealerInstance extends EventEmitter
           bankrollerBalance: channel.bankrollerBalance
         }
       })
+
+      this.statisticsClient
+        .openChannel(this.channelId, this._params.Eth.getAccount().address, this._params.gameInfo.slug)
+        .catch((error) => {
+          console.error(error)
+        })
+
       return channel
     } else {
-      throw new Error("channel not found")
+      throw new Error('channel not found')
     }
   }
 
@@ -208,7 +225,7 @@ export class DAppDealerInstance extends EventEmitter
 
   async callPlay(
     userBets: number[],
-    gameData: {seed:string, randomRanges:GameData['randomRanges'], custom?:GameData['custom']},
+    gameData: { seed: string, randomRanges: GameData['randomRanges'], custom?: GameData['custom'] },
     session: number,
     sign: string
   ) {
@@ -219,13 +236,13 @@ export class DAppDealerInstance extends EventEmitter
 
     // check session
     if (session !== curSession) {
-      throw new Error("incorrect session user:" + session + "!=" + curSession)
+      throw new Error('incorrect session user:' + session + '!=' + curSession)
     }
 
     // Check prev channel states from user
     if (this.channelState.hasUnconfirmed(this.playerAddress)) {
       throw new Error(
-        "Player " + this.playerAddress + " not confirm previous channel state"
+        'Player ' + this.playerAddress + ' not confirm previous channel state'
       )
     }
 
@@ -234,13 +251,13 @@ export class DAppDealerInstance extends EventEmitter
       throw new Error(
         `Player ${this.playerAddress} not enougth money for this bet, balance ${
           lastState._playerBalance
-        } < ${userAllBetsWei}`
+          } < ${userAllBetsWei}`
       )
     }
 
     // msg data for hashing by sha3
     // for check sig and random genrate
-    const hashGameData = sha3( 
+    const hashGameData = sha3(
       ...generateStructForSign(
         gameData.seed,
         flatternArr(gameData.randomRanges)
@@ -258,20 +275,27 @@ export class DAppDealerInstance extends EventEmitter
     // Check msg data signature
     const recoverOpenkey = this._params.Eth.recover(msgHash, sign)
     if (recoverOpenkey.toLowerCase() !== this.playerAddress.toLowerCase()) {
-      throw new Error("Invalid signature")
+      throw new Error('Invalid signature')
     }
 
     //
     // Generate random
     //
-    const rndSig  = this.Rsa.sign(msgHash).toString() 
-    const randoms = generateRandom( gameData.randomRanges, rndSig) 
+    const rndSig = this.Rsa.sign(msgHash).toString()
+    const randoms = generateRandom(gameData.randomRanges, rndSig)
 
     // Call game logic functions with generated randoms
     const playResult = this._gameLogic.play(userBets, gameData, randoms)
 
     // Change balances on channel state
-    const state = this.channelState.createState(userAllBetsWei, +bet2dec(playResult.profit) )
+    const state = this.channelState.createState(userAllBetsWei, +bet2dec(playResult.profit))
+
+    this.statisticsClient
+      .roll(this.channelId, this._params.Eth.getAccount().address, this._params.gameInfo.slug, betsSumm(userBets))
+      .catch((error) => {
+        console.error(error)
+      })
+
 
     // piu-piu-piu
     // the casino never loses ;)
@@ -279,11 +303,10 @@ export class DAppDealerInstance extends EventEmitter
   }
 
   confirmState(state: State) {
-    const stateFromPlayerConfirmed = this.channelState.confirmState(
+    return this.channelState.confirmState(
       state,
       this.playerAddress
     )
-    return stateFromPlayerConfirmed
   }
 
   consentCloseChannel(stateSignature: string): ConsentResult {
@@ -308,7 +331,7 @@ export class DAppDealerInstance extends EventEmitter
      */
     const recoverOpenkey = this._params.Eth.recover(consentHash, stateSignature)
     if (recoverOpenkey.toLowerCase() !== this.playerAddress.toLowerCase()) {
-      throw new Error("Invalid signature")
+      throw new Error('Invalid signature')
     }
 
     /** Sign and return consent structure */
@@ -327,14 +350,14 @@ export class DAppDealerInstance extends EventEmitter
      * and game over
      */
     if (
-      channel.state === "2" &&
+      channel.state === '2' &&
       channel.player.toLowerCase() === this._params.userId.toLowerCase() &&
       channel.bankroller.toLowerCase() ===
-        this._params.Eth.getAccount().address.toLowerCase()
+      this._params.Eth.getAccount().address.toLowerCase()
     ) {
       this.channelState = null
-      this.emit("info", {
-        event: "Close channel checked",
+      this.emit('info', {
+        event: 'Close channel checked',
         data: {
           player: channel.player.toLowerCase(),
           bankroller: channel.bankroller.toLowerCase(),
@@ -343,9 +366,15 @@ export class DAppDealerInstance extends EventEmitter
         }
       })
 
+      this.statisticsClient
+        .closeChannel(this.channelId, this._params.Eth.getAccount().address, this._params.gameInfo.slug)
+        .catch((error) => {
+          console.error(error)
+        })
+
       return channel
     } else {
-      throw new Error("channel not found")
+      throw new Error('channel not found')
     }
   }
 

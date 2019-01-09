@@ -221,7 +221,8 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
       roomProvider: this._params.roomProvider,
       onFinish: this.onGameFinished,
       gameInfo: this._gameInfo,
-      Eth: this._params.Eth
+      Eth: this._params.Eth,
+      statistics: this._params.statisticsClient
     })
     dappInstance.start()
     // TODO remove circular dependency
