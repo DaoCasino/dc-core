@@ -134,7 +134,7 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
     // TODO: should be some more complicated alg
 
     if (theChosen) {
-      const userId = this._params.Eth.getAccount().address
+      const userId = this._params.userAddress
       const { roomAddress } = await this._gameInfoRoom.connect({
         userId
       })

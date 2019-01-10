@@ -124,7 +124,8 @@ export interface IDAppPlayerInstance extends IDAppInstance {
   ): Promise<any>
 
   getChannelStateData: () => ChannelStateData
-
+  launchConnect: (connectData: ConnectParams) => AsyncIterator<any>
+  launchDisconnect: () => AsyncIterator<any>
   /*
     Call game logic function on dealer side and client side
     verify randoms and channelState

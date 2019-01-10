@@ -54,7 +54,7 @@ export class DAppPlayerInstance extends EventEmitter
     this._params = params
     this._config = config.default
     this._gameLogic = this._params.gameLogicFunction()
-    this.playerAddress = this._params.Eth.getAccount().address
+    this.playerAddress = this._params.userId
     this.pRsa = new Rsa(null)
     log.debug("Peer instance init")
   }
@@ -88,7 +88,7 @@ export class DAppPlayerInstance extends EventEmitter
 
     /** Check peer balance */
     log.info(`🔐 Open channel with deposit: ${playerDeposit}`)
-    const userBalance = await this._params.Eth.getBalances()
+    const userBalance = await this._params.Eth.getBalances(this.playerAddress)
 
     /**
      * If user Ethereum balance less
@@ -126,7 +126,7 @@ export class DAppPlayerInstance extends EventEmitter
     /** Emit info for approved deposit */
     this.emit("info", {
       event: "deposit approved",
-      address: this._params.Eth.getAccount().address,
+      address: this.playerAddress,
       gameAddress: this._params.gameContractAddress,
       amount: playerDeposit
     })
@@ -232,6 +232,31 @@ export class DAppPlayerInstance extends EventEmitter
     return { openChannelParams: peerResponse, signature }
   }
 
+  async *launchConnect(connectData: ConnectParams): AsyncIterableIterator<any> {
+    try {
+      const { openChannelParams, signature } = await this.getParamsForOpenChannel(connectData)
+      yield { openChannelParams, signature }
+  
+      const checkChannel = await this._dealer.checkOpenChannel()
+      if (checkChannel.state) {
+        /** Create channel state instance and save start save */
+        this.channelState = new ChannelState(
+          this._params.Eth,
+          openChannelParams.channelId,
+          this.playerAddress,
+          openChannelParams.bankrollerAddress,
+          +openChannelParams.playerDepositWei,
+          +openChannelParams.bankrollerDepositWei,
+          this.playerAddress // owner
+        )
+        this.channelState.createState(0, 0)
+        return { ...checkChannel, ...openChannelParams }
+      }
+    } catch (error) {
+      throw error
+    }
+  }
+
   async connect(connectData: ConnectParams): Promise<any> {
     const { openChannelParams, signature } = await this.getParamsForOpenChannel(connectData)
     /** Open channel with params */
@@ -282,7 +307,7 @@ export class DAppPlayerInstance extends EventEmitter
             params.bankrollerAddress,
             +params.playerDepositWei,
             +params.bankrollerDepositWei,
-            this._params.Eth.getAccount().address // owner
+            this.playerAddress // owner
           )
           this.channelState.createState(0, 0)
           return { ...checkChannel }
@@ -419,6 +444,22 @@ export class DAppPlayerInstance extends EventEmitter
     }
 
     return { lastState, consentSignature }
+  }
+
+  async *launchDisconnect(): AsyncIterableIterator<any> {
+    try {
+      const { lastState, consentSignature } = await this.getParamsForCloseChannel()
+      yield { lastState, consentSignature }
+
+      const checkChannel = await this._dealer.checkCloseChannel()
+      if (checkChannel.state === "2") {
+        this.channelState = null
+        this.emit("info", { event: "Channel closed" })
+        return { ...checkChannel }
+      }
+    } catch (error) {
+      throw error
+    }
   }
 
   async disconnect() {

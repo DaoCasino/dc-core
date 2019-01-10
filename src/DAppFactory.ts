@@ -12,15 +12,17 @@ import { DAppPlayerInstance } from "./DAppPlayerInstance"
 
 export class DAppFactory {
   eth: Eth
+  private userAddress: string
   private _transportProvider: IMessagingProvider
   private _configuration: IConfig
   constructor(
     transportProvider: IMessagingProvider,
+    userAddress: string,
     configuration: IConfig = config.default
   ) {
     this._configuration = configuration
     this._transportProvider = transportProvider
-
+    this.userAddress = userAddress
     const globalStore: any = global || window
     globalStore.DCLib = new GlobalGameLogicStore()
   }
@@ -53,6 +55,7 @@ export class DAppFactory {
       platformId,
       blockchainNetwork,
       rules,
+      userAddress: this.userAddress,
       roomProvider: this._transportProvider,
       gameLogicFunction,
       gameContractAddress,

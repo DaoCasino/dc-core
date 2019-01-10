@@ -8,6 +8,7 @@ export interface DAppParams {
   slug: string
   rules: any
   platformId: string
+  userAddress: string
   blockchainNetwork: string
   gameLogicFunction: () => IGameLogic
   gameContractAddress: string
