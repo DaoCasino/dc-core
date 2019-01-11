@@ -1,7 +1,10 @@
-import { IMessagingProvider } from "@daocasino/dc-messaging"
+
+import { IMessagingProvider } from '@daocasino/dc-messaging'
 import { BlockchainUtilsInstance, SolidityTypeValue } from "@daocasino/dc-blockchain-types"
-import Contract from "web3/eth/contract"
-import { GameInfo } from "./GameInfo"
+import { GameInfo } from './GameInfo'
+
+import Contract from 'web3/eth/contract'
+import { IStatisticsServerConnectParams } from './IStatisticsServerConnectParams'
 
 export type UserId = string
 
@@ -17,6 +20,7 @@ export interface DAppInstanceParams {
   onFinish: (userId: UserId) => void
   gameInfo: GameInfo
   Eth: BlockchainUtilsInstance
+  statistics?: IStatisticsServerConnectParams
 }
 
 export interface DAppInstanceView {
@@ -26,8 +30,10 @@ export interface DAppInstanceView {
   profit: number
   playerAddress: string
 }
+
 export interface IDAppInstance {
   on(event: string, func: (data: any) => void)
+
   start(): Promise<void> | void
 }
 
@@ -44,9 +50,11 @@ export interface OpenChannelParams {
   n: string
   e: string
 }
+
 export interface ConnectParams {
   playerDeposit: number
 }
+
 export interface GetChannelDataParams extends ConnectParams {
   playerAddress: string
   channelId: string
@@ -60,10 +68,11 @@ export interface GameData {
   // Some other data from game-developer
   custom?: any
 }
+
 export interface FullGameData {
   seed: string
-  randomRanges: GameData["randomRanges"]
-  custom?: GameData["custom"]
+  randomRanges: GameData['randomRanges']
+  custom?: GameData['custom']
 }
 
 export interface PlayParams {
@@ -103,6 +112,7 @@ interface PeerBalance {
   bankroller: number
   player: number
 }
+
 export interface ChannelStateData {
   deposits: PeerBalance
   balance: PeerBalance
@@ -110,6 +120,7 @@ export interface ChannelStateData {
 }
 
 export interface IDAppPlayerInstance extends IDAppInstance {
+  getChannelStateData: () => ChannelStateData
   getParamsForOpenChannel: (connectData: ConnectParams) => Promise<{
     openChannelParams: OpenChannelParams,
     signature: string
@@ -123,7 +134,6 @@ export interface IDAppPlayerInstance extends IDAppInstance {
     signature: string
   ): Promise<any>
 
-  getChannelStateData: () => ChannelStateData
   launchConnect: (connectData: ConnectParams) => AsyncIterator<any>
   launchDisconnect: () => AsyncIterator<any>
   /*
@@ -175,7 +185,7 @@ export interface IDAppDealerInstance extends IDAppInstance {
     Call game logic function on dealer side
    */
   callPlay(
-    userBets: PlayParams["userBets"], // array of humanreadable format token value 1 = 1 * 10**18
+    userBets: PlayParams['userBets'], // array of humanreadable format token value 1 = 1 * 10**18
     // specified data for game
     gameData: FullGameData,
     session: number, // aka nonce, every call session++ on channelState

@@ -1,8 +1,9 @@
-import { IMessagingProvider } from "@daocasino/dc-messaging"
+import { IMessagingProvider } from '@daocasino/dc-messaging'
 import { BlockchainUtilsInstance } from "@daocasino/dc-blockchain-types"
-import { IGameLogic, DAppInstanceView } from "./index"
-import { EventEmitter } from "events"
-import { IDAppPlayerInstance } from "./IDAppInstance"
+import { DAppInstanceView, IGameLogic } from './index'
+import { EventEmitter } from 'events'
+import { IDAppPlayerInstance } from './IDAppInstance'
+import { IStatisticsServerConnectParams } from './IStatisticsServerConnectParams'
 
 export interface DAppParams {
   slug: string
@@ -14,6 +15,7 @@ export interface DAppParams {
   gameContractAddress: string
   roomProvider: IMessagingProvider
   Eth: BlockchainUtilsInstance
+  statisticsClient?: IStatisticsServerConnectParams
 }
 
 export interface IDApp extends EventEmitter {
