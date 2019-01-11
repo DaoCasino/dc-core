@@ -455,7 +455,7 @@ export class DAppPlayerInstance extends EventEmitter
       if (checkChannel.state === "2") {
         this.channelState = null
         this.emit("info", { event: "Channel closed" })
-        return { ...checkChannel }
+        return { ...lastState, ...checkChannel }
       }
     } catch (error) {
       throw error
