@@ -56,7 +56,13 @@ export class DAppDealerInstance extends EventEmitter
     this._params = params
     this._config = config.default
     this._gameLogic = this._params.gameLogicFunction()
-    this.statisticsClient = new DCStatisticClient(params.statistics)
+
+    try {
+      this.statisticsClient = new DCStatisticClient(params.statistics)
+      console.log("Statistics client start with params", params.statistics)
+    } catch (e) {
+      log.error(e.message)
+    }
 
     this.Rsa = new Rsa()
     log.debug('Dealer instance init')
