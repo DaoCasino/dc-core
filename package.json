@@ -15,6 +15,7 @@
   "license": "GPL-3.0",
   "dependencies": {
     "@daocasino/dc-configs": "^0.2.5",
+    "@daocasino/dc-statistics-client": "^0.2.5",
     "@daocasino/dc-ethereum-utils": "^0.2.5",
     "@daocasino/dc-logging": "^0.2.5",
     "@daocasino/dc-messaging": "^0.2.5",
