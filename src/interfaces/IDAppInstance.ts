@@ -1,8 +1,6 @@
-
 import { IMessagingProvider } from '@daocasino/dc-messaging'
 import { BlockchainUtilsInstance, SolidityTypeValue } from "@daocasino/dc-blockchain-types"
 import { GameInfo } from './GameInfo'
-
 import Contract from 'web3/eth/contract'
 import { IStatisticsServerConnectParams } from './IStatisticsServerConnectParams'
 
@@ -16,6 +14,7 @@ export interface DAppInstanceParams {
   gameLogicFunction: () => IGameLogic
   gameContractInstance: Contract
   gameContractAddress: string
+  playerSign?: (data: SolidityTypeValue[]) => Promise<string>
   roomProvider: IMessagingProvider
   onFinish: (userId: UserId) => void
   gameInfo: GameInfo

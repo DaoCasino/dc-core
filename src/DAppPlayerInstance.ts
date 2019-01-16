@@ -146,7 +146,7 @@ export class DAppPlayerInstance extends EventEmitter
       `${args.playerDeposit}`
     )
 
-    const argsSignature: string = this._params.Eth.signData(argsToSign)
+    const argsSignature: string = await this._params.playerSign(argsToSign) // this._params.Eth.signData(argsToSign)
 
     /**
      * Request to dealer args to
@@ -545,14 +545,21 @@ export class DAppPlayerInstance extends EventEmitter
       ).concat(Object.values(playData.gameData.custom))
     )  
 
-    const openerSignature = this._params.Eth.signData(
+    const openerSignature = await this._params.playerSign(
       generateStructForSign(
         lastState._id,
         `${lastState._session}`,
         `${lastState._totalBet}`,
         gameDataHash
       )
-    )
+    ) /*this._params.Eth.signData(
+      generateStructForSign(
+        lastState._id,
+        `${lastState._session}`,
+        `${lastState._totalBet}`,
+        gameDataHash
+      )
+    )*/
     
     log.info(`
       \ropenDispute

@@ -148,6 +148,7 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
         gameLogicFunction: this._params.gameLogicFunction,
         roomProvider: this._params.roomProvider,
         roomAddress,
+        playerSign: this._params.playerSign,
         onFinish: this.onGameFinished,
         gameInfo: this._gameInfo,
         Eth: this._params.Eth
