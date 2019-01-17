@@ -56,6 +56,7 @@ export class DAppDealerInstance extends EventEmitter
     this._params = params
     this._config = config.default
     this._gameLogic = this._params.gameLogicFunction()
+
     this.statisticsClient = new DCStatisticClient(params.statistics)
 
     this.Rsa = new Rsa()
@@ -208,7 +209,7 @@ export class DAppDealerInstance extends EventEmitter
       })
 
       this.statisticsClient
-        .openChannel(this.channelId, this._params.Eth.getAccount().address, this._params.gameInfo.slug)
+        .openChannel(this.channelId, this.playerAddress, this._params.gameInfo.slug)
         .catch((error) => {
           console.error(error)
         })
@@ -291,7 +292,7 @@ export class DAppDealerInstance extends EventEmitter
     const state = this.channelState.createState(userAllBetsWei, +bet2dec(playResult.profit))
 
     this.statisticsClient
-      .roll(this.channelId, this._params.Eth.getAccount().address, this._params.gameInfo.slug, betsSumm(userBets))
+      .roll(this.channelId, this.playerAddress, this._params.gameInfo.slug, betsSumm(userBets))
       .catch((error) => {
         console.error(error)
       })
@@ -367,7 +368,7 @@ export class DAppDealerInstance extends EventEmitter
       })
 
       this.statisticsClient
-        .closeChannel(this.channelId, this._params.Eth.getAccount().address, this._params.gameInfo.slug)
+        .closeChannel(this.channelId, this.playerAddress, this._params.gameInfo.slug)
         .catch((error) => {
           console.error(error)
         })
