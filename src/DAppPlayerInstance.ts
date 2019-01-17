@@ -118,10 +118,11 @@ export class DAppPlayerInstance extends EventEmitter
      * start ERC20 approve
      */
     log.info(`start ERC20ApproveSafe ${playerDeposit}`)
-    await this._params.Eth.ERC20ApproveSafe(
-      this._params.gameContractAddress,
-      playerDeposit
-    )
+    await this._params.Eth.ERC20ApproveSafe({
+      spender: this._params.gameContractAddress,
+      amount: playerDeposit,
+      addressFrom: this.playerAddress
+    })
 
     /** Emit info for approved deposit */
     this.emit("info", {

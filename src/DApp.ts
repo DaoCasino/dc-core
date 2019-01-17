@@ -174,11 +174,13 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
       this,
       true
     )
-    await this._params.Eth.ERC20ApproveSafe(
-      this._gameContractAddress,
-      SERVER_APPROVE_AMOUNT,
-      SERVER_APPROVE_MINAMOUNT
-    )
+    await this._params.Eth.ERC20ApproveSafe({
+      spender: this._gameContractAddress,
+      amount: SERVER_APPROVE_AMOUNT,
+      minAmount: SERVER_APPROVE_MINAMOUNT,
+      addressFrom: this._params.userAddress
+    })
+    
     return this._startSendingBeacon(3000)
   }
 
