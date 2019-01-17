@@ -1,9 +1,9 @@
-import { config } from "@daocasino/dc-configs"
-import { Logger } from "@daocasino/dc-logging"
-import { Eth, makeSeed } from "@daocasino/dc-ethereum-utils"
-import { generateRandom } from "../Rnd"
+import { config } from '@daocasino/dc-configs'
+import { Logger } from '@daocasino/dc-logging'
+import { Eth, makeSeed } from '@daocasino/dc-ethereum-utils'
+import { generateRandom } from '../Rnd'
 
-const log = new Logger("generateRND:Test:")
+const log = new Logger('generateRND:Test:')
 const {
   gasPrice: price,
   gasLimit: limit,
@@ -22,7 +22,7 @@ const generateRNDTEST = async (rangeStart, rangeEnd) => {
   })
   eth.initAccount(privateKey)
   const seed = makeSeed()
-  const hash = eth.signData([{ t: "bytes32", v: seed }])
+  const hash = eth.signData([{ t: 'bytes32', v: seed }])
 
   const rnd = generateRandom(
     [
