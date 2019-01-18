@@ -1,20 +1,21 @@
-import { IGameLogic } from "./interfaces/index"
+import { IGameLogic } from './interfaces/index'
 
-import { Eth } from "@daocasino/dc-ethereum-utils"
-import { Logger } from "@daocasino/dc-logging"
+import { Eth } from '@daocasino/dc-ethereum-utils'
+import { Logger } from '@daocasino/dc-logging'
 
-import { config, BlockchainNetwork, IConfig } from "@daocasino/dc-configs"
+import { config, BlockchainNetwork, IConfig } from '@daocasino/dc-configs'
 
-import { GlobalGameLogicStore } from "./GlobalGameLogicStore"
-import { DApp } from "./DApp"
-import { IMessagingProvider } from "@daocasino/dc-messaging"
-import { DAppPlayerInstance } from "./DAppPlayerInstance"
+import { GlobalGameLogicStore } from './GlobalGameLogicStore'
+import { DApp } from './DApp'
+import { IMessagingProvider } from '@daocasino/dc-messaging'
+import { DAppPlayerInstance } from './DAppPlayerInstance'
 
 export class DAppFactory {
   eth: Eth
   private userAddress: string
   private _transportProvider: IMessagingProvider
   private _configuration: IConfig
+
   constructor(
     transportProvider: IMessagingProvider,
     userAddress: string,

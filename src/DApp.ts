@@ -1,16 +1,16 @@
-import { IDApp, DAppParams, UserId, GameInfo } from "./interfaces/index"
+import { IDApp, DAppParams, UserId, GameInfo } from './interfaces/index'
 
-import { config } from "@daocasino/dc-configs"
+import { config } from '@daocasino/dc-configs'
 
-import { Logger } from "@daocasino/dc-logging"
-import Contract from "web3/eth/contract"
-import { setInterval } from "timers"
-import { EventEmitter } from "events"
-import { DAppPlayerInstance } from "./DAppPlayerInstance"
-import { DAppDealerInstance } from "./DAppDealerInstance"
-import * as Utils from "@daocasino/dc-ethereum-utils"
+import { Logger } from '@daocasino/dc-logging'
+import Contract from 'web3/eth/contract'
+import { setInterval } from 'timers'
+import { EventEmitter } from 'events'
+import { DAppPlayerInstance } from './DAppPlayerInstance'
+import { DAppDealerInstance } from './DAppDealerInstance'
+import * as Utils from '@daocasino/dc-ethereum-utils'
 
-const log = new Logger("DAppInstance")
+const log = new Logger('DAppInstance')
 
 /*
  * DApp constructor
@@ -24,11 +24,12 @@ interface ReadyInfo {
   }
   address: string
 }
+
 const SERVER_APPROVE_AMOUNT = 100000000
 const SERVER_APPROVE_MINAMOUNT = 10000000
 
 interface IGameInfoRoom {
-  on: (event: "ready", callback: (info: ReadyInfo) => void) => void
+  on: (event: 'ready', callback: (info: ReadyInfo) => void) => void
   connect: ({ userId: string }) => { roomAddress: string }
 }
 
@@ -48,12 +49,12 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
     super()
 
     if (!params.slug) {
-      log.debug(["Create DApp error", params], "error")
-      throw new Error("slug option is required")
+      log.debug(['Create DApp error', params], 'error')
+      throw new Error('slug option is required')
     }
 
     if (!params.gameContractAddress) {
-      throw new Error("gameContract is not specified in  DApp params")
+      throw new Error('gameContract is not specified in  DApp params')
     }
 
     this._params = params
@@ -77,7 +78,7 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
 
     this._gameInfoRoomAddress = `${params.platformId}_${
       params.blockchainNetwork
-    }_${this._gameInfo.hash}`
+      }_${this._gameInfo.hash}`
   }
 
   getView() {
@@ -91,18 +92,16 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
   }
 
   eventNames(): string[] {
-    return ["ready"]
+    return ['ready']
   }
 
   async startClient(): Promise<DAppPlayerInstance> {
-    this._gameInfoRoom = await this._params.roomProvider.getRemoteInterface<
-      IGameInfoRoom
-    >(this._gameInfoRoomAddress)
+    this._gameInfoRoom = await this._params.roomProvider.getRemoteInterface<IGameInfoRoom>(this._gameInfoRoomAddress)
 
     const readyServers: Map<string, ReadyInfo> = new Map()
 
     const prommise = new Promise<DAppPlayerInstance>((resolve, reject) => {
-      this._gameInfoRoom.on("ready", async readyInfo => {
+      this._gameInfoRoom.on('ready', async readyInfo => {
         readyServers.set(readyInfo.address, readyInfo)
 
         if (this._dappInstancePromise) await this._dappInstancePromise
@@ -153,9 +152,9 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
         gameInfo: this._gameInfo,
         Eth: this._params.Eth
       })
-      this.dappInstance.on("info", data => {
-        self.emit("dapp::status", {
-          message: "dapp instance message",
+      this.dappInstance.on('info', data => {
+        self.emit('dapp::status', {
+          message: 'dapp instance message',
           data
         })
       })
@@ -163,8 +162,8 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
 
       return this.dappInstance
     }
-    self.emit("dapp::status", { message: "Server not chosen", data: {} })
-    log.debug("Server not choosen")
+    self.emit('dapp::status', { message: 'Server not chosen', data: {} })
+    log.debug('Server not choosen')
     return null
   }
 
@@ -191,7 +190,7 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
     const self = this
 
     this._beaconInterval = setInterval(() => {
-      self.emit("ready", {
+      self.emit('ready', {
         // deposit: bet2dec(balance),
         deposit: balance,
         dapp: {

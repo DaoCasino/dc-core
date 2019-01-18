@@ -13,9 +13,9 @@ import {
   GetChannelDataParams,
   ChannelStateData,
   State
-} from "./interfaces/index"
+} from './interfaces/index'
 
-import { generateRandom } from "./Rnd"
+import { generateRandom } from './Rnd'
 
 import {
   sha3,
@@ -34,7 +34,7 @@ import { ChannelState } from "./ChannelState"
 import { EventEmitter } from "events"
 import { Rsa } from "./Rsa"
 
-const log = new Logger("PeerInstance")
+const log = new Logger('PeerInstance')
 
 export class DAppPlayerInstance extends EventEmitter
   implements IDAppPlayerInstance {
@@ -56,11 +56,11 @@ export class DAppPlayerInstance extends EventEmitter
     this._gameLogic = this._params.gameLogicFunction()
     this.playerAddress = this._params.userId
     this.pRsa = new Rsa(null)
-    log.debug("Peer instance init")
+    log.debug('Peer instance init')
   }
 
   eventNames() {
-    return ["info"]
+    return ['info']
   }
 
   onPeerEvent(event: string, func: (data: any) => void) {
@@ -170,7 +170,7 @@ export class DAppPlayerInstance extends EventEmitter
     const bankrollerDeposit: number = dec2bet(peerResponse.bankrollerDepositWei)
     if (this._params.rules.depositX * args.playerDeposit > bankrollerDeposit) {
       log.debug({
-        msg: "Bankroller open channel bad deposit",
+        msg: 'Bankroller open channel bad deposit',
         data: {
           bankrollerDeposit,
           playerDeposit,
@@ -178,7 +178,7 @@ export class DAppPlayerInstance extends EventEmitter
         }
       })
 
-      throw new Error("Bankroller open channel deposit too low")
+      throw new Error('Bankroller open channel deposit too low')
     }
 
     /**
@@ -197,8 +197,8 @@ export class DAppPlayerInstance extends EventEmitter
       `)
     }
 
-    this.emit("info", {
-      event: "Bankroller allowance checked",
+    this.emit('info', {
+      event: 'Bankroller allowance checked',
       address: peerResponse.bankrollerAddress,
       gameAddress: this._params.gameContractAddress,
       amount: bankrollerDeposit
@@ -227,7 +227,7 @@ export class DAppPlayerInstance extends EventEmitter
       recoverOpenkey.toLowerCase() !==
       peerResponse.bankrollerAddress.toLowerCase()
     ) {
-      throw new Error("Invalid signature")
+      throw new Error('Invalid signature')
     }
 
     return { openChannelParams: peerResponse, signature }
@@ -293,7 +293,7 @@ export class DAppPlayerInstance extends EventEmitter
       log.debug(`start openChannel transaction`)
       const openChannelTX = await this._params.Eth.sendTransaction(
         this._params.gameContractInstance,
-        "openChannel",
+        'openChannel',
         openChannelArgs
       )
       if (openChannelTX.status) {
@@ -324,7 +324,7 @@ export class DAppPlayerInstance extends EventEmitter
 
     // Add entropy(seed) to gameData
     const gameData = { seed: makeSeed(), ...params.gameData }
-    
+
     this.channelState.savePlayData(userBets, gameData)
 
     const flatRanges = flatternArr(gameData.randomRanges)
@@ -334,7 +334,7 @@ export class DAppPlayerInstance extends EventEmitter
         gameData.seed,
         flatRanges
       ).concat(Object.values(gameData.custom))
-    )    
+    )
 
     // hash of all data use for generate random
     // and sign sended message
@@ -362,7 +362,7 @@ export class DAppPlayerInstance extends EventEmitter
 
     // check our random hash, dealer sign
     if (!this.pRsa.verify(roundHash, dealerRes.rndSig)) {
-      throw new Error("Invalid random sig")
+      throw new Error('Invalid random sig')
       this.openDispute()
     }
 
@@ -381,9 +381,9 @@ export class DAppPlayerInstance extends EventEmitter
       +bet2dec(playResult.profit)
     )
 
-    log.debug("dealerRes", dealerRes)
-    log.debug("profit", playResult.profit)
-    log.debug("player state", state)
+    log.debug('dealerRes', dealerRes)
+    log.debug('profit', playResult.profit)
+    log.debug('player state', state)
 
     // try add bankroller sign state
     this.channelState.confirmState(
@@ -410,7 +410,7 @@ export class DAppPlayerInstance extends EventEmitter
      * Get player address and last state for close
      * channel and create structure for sign last state
      */
-    // const playerAddress = this._params.Eth.getAccount().address
+      // const playerAddress = this._params.Eth.getAccount().address
     const lastState = this.channelState.getState()
     const closeChannelData: SolidityTypeValue[] = generateStructForSign(
       lastState._id,
@@ -441,7 +441,7 @@ export class DAppPlayerInstance extends EventEmitter
       consentSignature
     )
     if (recoverOpenkey.toLowerCase() !== bankrollerAddress.toLowerCase()) {
-      throw new Error("Invalid signature")
+      throw new Error('Invalid signature')
     }
 
     return { lastState, consentSignature }
@@ -492,7 +492,7 @@ export class DAppPlayerInstance extends EventEmitter
       log.debug(`start close transaction`)
       const closeChannelTX = await this._params.Eth.sendTransaction(
         this._params.gameContractInstance,
-        "closeByConsent",
+        'closeByConsent',
         closeParams
       )
 
@@ -503,9 +503,9 @@ export class DAppPlayerInstance extends EventEmitter
        */
       if (closeChannelTX.status) {
         const checkChannel = await this._dealer.checkCloseChannel()
-        if (checkChannel.state === "2") {
+        if (checkChannel.state === '2') {
           this.channelState = null
-          this.emit("info", { event: "Channel closed" })
+          this.emit('info', { event: 'Channel closed' })
           return { ...checkChannel }
         }
       }
@@ -519,13 +519,13 @@ export class DAppPlayerInstance extends EventEmitter
 
     const updateChannelTX = await this._params.Eth.sendTransaction(
       this._params.gameContractInstance,
-      "updateChannel",
+      'updateChannel',
       [
         lastState.data._id,
-        "" + lastState.data._playerBalance,
-        "" + lastState.data._bankrollerBalance,
-        "" + lastState.data._totalBet,
-        "" + lastState.data._session,
+        '' + lastState.data._playerBalance,
+        '' + lastState.data._bankrollerBalance,
+        '' + lastState.data._totalBet,
+        '' + lastState.data._session,
         lastState.signs[this.channelState.bankrollerOpenkey]
       ]
     )
@@ -535,7 +535,7 @@ export class DAppPlayerInstance extends EventEmitter
 
   async openDispute() {
     await this.updateChannel()
-    
+
     const lastState = this.channelState.getState()
     const playData = this.channelState.getPlayData()
 
@@ -544,7 +544,7 @@ export class DAppPlayerInstance extends EventEmitter
         playData.gameData.seed,
         flatternArr(playData.gameData.randomRanges)
       ).concat(Object.values(playData.gameData.custom))
-    )  
+    )
 
     const openerSignature = await this._params.playerSign(
       generateStructForSign(
@@ -570,10 +570,10 @@ export class DAppPlayerInstance extends EventEmitter
     // openDispute
     const openDisputeTX = await this._params.Eth.sendTransaction(
       this._params.gameContractInstance,
-      "openDispute",
+      'openDispute',
       [
         lastState._id,
-        "" + lastState._session,
+        '' + lastState._session,
         playData.userBets,
         playData.gameData,
         openerSignature
@@ -600,12 +600,12 @@ export class DAppPlayerInstance extends EventEmitter
     const dialog = msg => {
       return confirm(msg) || log.info(msg)
     }
-    if (dialog("Open dispute?")) {
+    if (dialog('Open dispute?')) {
     }
-    if (dialog("Close channel with last state?")) {
+    if (dialog('Close channel with last state?')) {
     }
 
-    if (dialog("Do nothing?")) {
+    if (dialog('Do nothing?')) {
     }
   }
 }
