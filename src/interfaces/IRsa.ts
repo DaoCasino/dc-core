@@ -1,4 +1,4 @@
-import NodeRsa from "node-rsa"
+import NodeRsa from 'node-rsa'
 
 export interface IRsa {
   getNE: () => { n: string; e: string }

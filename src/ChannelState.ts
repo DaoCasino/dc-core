@@ -1,8 +1,8 @@
-import { Eth, ETHInstance, sha3, SolidityTypeValue } from "@daocasino/dc-ethereum-utils"
+import { Eth, ETHInstance, sha3, SolidityTypeValue } from '@daocasino/dc-ethereum-utils'
 import { State, FullGameData, PlayParams } from './index'
-import { Logger } from "@daocasino/dc-logging"
+import { Logger } from '@daocasino/dc-logging'
 
-const log = new Logger("tests")
+const log = new Logger('tests')
 
 
 export class ChannelState {
@@ -56,7 +56,7 @@ export class ChannelState {
     this._profit = 0
 
     if (!playerOpenkey) {
-      log.error(" player_openkey required in channelState constructor")
+      log.error(' player_openkey required in channelState constructor')
       return
     }
     this.playerOpenkey = playerOpenkey
@@ -69,7 +69,7 @@ export class ChannelState {
     this.balance.bankroller = 1 * this.deposit.bankroller
 
     this.state = {
-      hash: "",
+      hash: '',
       signs: {},
       data: {
         _id: this._id,
@@ -114,19 +114,19 @@ export class ChannelState {
     return this._session
   }
 
-  _sha3state(stateData: State["data"]) {
+  _sha3state(stateData: State['data']) {
     const toHash: SolidityTypeValue[] = [
-      { t: "bytes32", v: stateData._id },
-      { t: "uint256", v: "" + stateData._playerBalance },
-      { t: "uint256", v: "" + stateData._bankrollerBalance },
-      { t: "uint256", v: "" + stateData._totalBet },
-      { t: "uint256", v: "" + stateData._session }
+      { t: 'bytes32', v: stateData._id },
+      { t: 'uint256', v: '' + stateData._playerBalance },
+      { t: 'uint256', v: '' + stateData._bankrollerBalance },
+      { t: 'uint256', v: '' + stateData._totalBet },
+      { t: 'uint256', v: '' + stateData._session }
     ]
 
     return sha3(...toHash)
   }
 
-  ourStateData(): State["data"] {
+  ourStateData(): State['data'] {
     return {
       _id: this._id,
       _playerBalance: this.balance.player,
@@ -136,16 +136,17 @@ export class ChannelState {
     }
   }
 
-  savePlayData(userBets:PlayParams['userBets'], gameData:FullGameData){
-    this.playData = {userBets, gameData}
+  savePlayData(userBets: PlayParams['userBets'], gameData: FullGameData) {
+    this.playData = { userBets, gameData }
   }
+
   getPlayData() {
     return this.playData
   }
 
-  createState(bet: number|string, profit: number): State {
+  createState(bet: number | string, profit: number): State {
     bet = Number(bet)
-    
+
     // Change balances on channel state
     this._addTotalBet(bet)
     this._addTX(profit)
@@ -168,7 +169,7 @@ export class ChannelState {
     return this.state
   }
 
-  getState(): State["data"] {
+  getState(): State['data'] {
     return this.state.data
   }
 
@@ -199,7 +200,7 @@ export class ChannelState {
     const theirHash = this._sha3state(theirState.data)
 
     if (this.state.hash !== theirHash) {
-      log.error(" this.state.hash !== theirHash ...")
+      log.error(' this.state.hash !== theirHash ...')
       return false
     }
 
@@ -207,16 +208,16 @@ export class ChannelState {
     const recoverOpenkey = this.Eth.recover(this.state.hash, theirSign)
 
     if (recoverOpenkey.toLowerCase() !== address.toLowerCase()) {
-      log.error("State " + recoverOpenkey + "!=" + address)
+      log.error('State ' + recoverOpenkey + '!=' + address)
       return false
     }
 
-    this.state.signs[address] = "" + theirState.signs[address]
+    this.state.signs[address] = '' + theirState.signs[address]
     return true
   }
 
   reset() {
-    log.debug("PayChannel::reset, set deposit balance profit to 0")
+    log.debug('PayChannel::reset, set deposit balance profit to 0')
     this.deposit.player = null
     this.deposit.bankroller = null
     this.balance.player = 0
