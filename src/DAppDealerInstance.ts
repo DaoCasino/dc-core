@@ -11,9 +11,6 @@ import {
   SignedResponse,
   State
 } from './index'
-
-import { DCStatisticClient } from '@daocasino/dc-statistics-client'
-
 import {
   bet2dec,
   bets2decs,
@@ -21,9 +18,9 @@ import {
   flatternArr,
   generateStructForSign,
   sha3,
-  SolidityTypeValue
 } from '@daocasino/dc-ethereum-utils'
-
+import { DCStatisticClient } from '@daocasino/dc-statistics-client'
+import { SolidityTypeValue } from '@daocasino/dc-blockchain-types'
 import { Logger } from '@daocasino/dc-logging'
 import { config } from '@daocasino/dc-configs'
 import { ChannelState } from './ChannelState'

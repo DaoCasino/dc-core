@@ -25,15 +25,14 @@ import {
   bets2decs,
   betsSumm,
   flatternArr,
-  SolidityTypeValue,
   generateStructForSign
-} from '@daocasino/dc-ethereum-utils'
-
-import { Logger } from '@daocasino/dc-logging'
-import { config } from '@daocasino/dc-configs'
-import { ChannelState } from './ChannelState'
-import { EventEmitter } from 'events'
-import { Rsa } from './Rsa'
+} from "@daocasino/dc-ethereum-utils"
+import { SolidityTypeValue } from '@daocasino/dc-blockchain-types'
+import { Logger } from "@daocasino/dc-logging"
+import { config } from "@daocasino/dc-configs"
+import { ChannelState } from "./ChannelState"
+import { EventEmitter } from "events"
+import { Rsa } from "./Rsa"
 
 const log = new Logger('PeerInstance')
 
@@ -55,7 +54,7 @@ export class DAppPlayerInstance extends EventEmitter
     this._params = params
     this._config = config.default
     this._gameLogic = this._params.gameLogicFunction()
-    this.playerAddress = this._params.Eth.getAccount().address
+    this.playerAddress = this._params.userId
     this.pRsa = new Rsa(null)
     log.debug('Peer instance init')
   }
@@ -80,13 +79,16 @@ export class DAppPlayerInstance extends EventEmitter
     return this.channelState.getData()
   }
 
-  async connect(connectData: ConnectParams): Promise<any> {
+  async getParamsForOpenChannel(connectData: ConnectParams): Promise<{
+    openChannelParams: OpenChannelParams,
+    signature: string
+  }> {
     /** Parse method params */
     const { playerDeposit } = connectData
 
     /** Check peer balance */
     log.info(`🔐 Open channel with deposit: ${playerDeposit}`)
-    const userBalance = await this._params.Eth.getBalances()
+    const userBalance = await this._params.Eth.getBalances(this.playerAddress)
 
     /**
      * If user Ethereum balance less
@@ -116,15 +118,16 @@ export class DAppPlayerInstance extends EventEmitter
      * start ERC20 approve
      */
     log.info(`start ERC20ApproveSafe ${playerDeposit}`)
-    await this._params.Eth.ERC20ApproveSafe(
-      this._params.gameContractAddress,
-      playerDeposit
-    )
+    await this._params.Eth.ERC20ApproveSafe({
+      spender: this._params.gameContractAddress,
+      amount: playerDeposit,
+      addressFrom: this.playerAddress
+    })
 
     /** Emit info for approved deposit */
-    this.emit('info', {
-      event: 'deposit approved',
-      address: this._params.Eth.getAccount().address,
+    this.emit("info", {
+      event: "deposit approved",
+      address: this.playerAddress,
       gameAddress: this._params.gameContractAddress,
       amount: playerDeposit
     })
@@ -144,7 +147,7 @@ export class DAppPlayerInstance extends EventEmitter
       `${args.playerDeposit}`
     )
 
-    const argsSignature: string = this._params.Eth.signData(argsToSign)
+    const argsSignature: string = await this._params.playerSign(argsToSign) // this._params.Eth.signData(argsToSign)
 
     /**
      * Request to dealer args to
@@ -227,14 +230,44 @@ export class DAppPlayerInstance extends EventEmitter
       throw new Error('Invalid signature')
     }
 
+    return { openChannelParams: peerResponse, signature }
+  }
+
+  async *launchConnect(connectData: ConnectParams): AsyncIterableIterator<any> {
+    try {
+      const { openChannelParams, signature } = await this.getParamsForOpenChannel(connectData)
+      yield { openChannelParams, signature }
+  
+      const checkChannel = await this._dealer.checkOpenChannel()
+      if (checkChannel.state) {
+        /** Create channel state instance and save start save */
+        this.channelState = new ChannelState(
+          this._params.Eth,
+          openChannelParams.channelId,
+          this.playerAddress,
+          openChannelParams.bankrollerAddress,
+          +openChannelParams.playerDepositWei,
+          +openChannelParams.bankrollerDepositWei,
+          this.playerAddress // owner
+        )
+        this.channelState.createState(0, 0)
+        return { ...checkChannel, ...openChannelParams }
+      }
+    } catch (error) {
+      throw error
+    }
+  }
+
+  async connect(connectData: ConnectParams): Promise<any> {
+    const { openChannelParams, signature } = await this.getParamsForOpenChannel(connectData)
     /** Open channel with params */
-    const channelStatus = await this.openChannel(peerResponse, signature)
-    if (channelStatus.state === '1') {
-      this.emit('info', {
-        event: 'Channel open',
-        data: { channelStatus, peerResponse }
+    const channelStatus = await this.openChannel(openChannelParams, signature)
+    if (channelStatus.state === "1") {
+      this.emit("info", {
+        event: "Channel open",
+        data: { channelStatus, openChannelParams }
       })
-      return { ...channelStatus, ...peerResponse }
+      return { ...channelStatus, ...openChannelParams }
     }
   }
 
@@ -275,7 +308,7 @@ export class DAppPlayerInstance extends EventEmitter
             params.bankrollerAddress,
             +params.playerDepositWei,
             +params.bankrollerDepositWei,
-            this._params.Eth.getAccount().address // owner
+            this.playerAddress // owner
           )
           this.channelState.createState(0, 0)
           return { ...checkChannel }
@@ -369,7 +402,10 @@ export class DAppPlayerInstance extends EventEmitter
     }
   }
 
-  async disconnect() {
+  async getParamsForCloseChannel(): Promise<{
+    lastState: CloseChannelParams,
+    consentSignature: string
+  }> {
     /**
      * Get player address and last state for close
      * channel and create structure for sign last state
@@ -408,9 +444,34 @@ export class DAppPlayerInstance extends EventEmitter
       throw new Error('Invalid signature')
     }
 
-    /** Send close channel transaction */
-    const closeChannelTX = await this.closeChannel(lastState, consentSignature)
-    return { ...lastState, ...closeChannelTX }
+    return { lastState, consentSignature }
+  }
+
+  async *launchDisconnect(): AsyncIterableIterator<any> {
+    try {
+      const { lastState, consentSignature } = await this.getParamsForCloseChannel()
+      yield { lastState, consentSignature }
+
+      const checkChannel = await this._dealer.checkCloseChannel()
+      if (checkChannel.state === "2") {
+        this.channelState = null
+        this.emit("info", { event: "Channel closed" })
+        return { ...lastState, ...checkChannel }
+      }
+    } catch (error) {
+      throw error
+    }
+  }
+
+  async disconnect() {
+    try {
+      const { lastState, consentSignature } = await this.getParamsForCloseChannel()
+      /** Send close channel transaction */
+      const closeChannelTX = await this.closeChannel(lastState, consentSignature)
+      return { ...lastState, ...closeChannelTX }
+    } catch (error) {
+      throw error
+    }
   }
 
   async closeChannel(
@@ -420,11 +481,11 @@ export class DAppPlayerInstance extends EventEmitter
     /** Generate params for close channel with method params */
     const closeParams = [
       params._id,
-      '' + params._playerBalance,
-      '' + params._bankrollerBalance,
-      '' + params._totalBet,
-      '' + params._session,
-      paramsSignature
+      `${params._playerBalance}`,
+      `${params._bankrollerBalance}`,
+      `${params._totalBet}`,
+      `${params._session}`,
+      `${paramsSignature}`
     ]
 
     try {
@@ -485,15 +546,22 @@ export class DAppPlayerInstance extends EventEmitter
       ).concat(Object.values(playData.gameData.custom))
     )
 
-    const openerSignature = this._params.Eth.signData(
+    const openerSignature = await this._params.playerSign(
       generateStructForSign(
         lastState._id,
         `${lastState._session}`,
         `${lastState._totalBet}`,
         gameDataHash
       )
-    )
-
+    ) /*this._params.Eth.signData(
+      generateStructForSign(
+        lastState._id,
+        `${lastState._session}`,
+        `${lastState._totalBet}`,
+        gameDataHash
+      )
+    )*/
+    
     log.info(`
       \ropenDispute
       \r${playData}

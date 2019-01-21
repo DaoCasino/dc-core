@@ -3,12 +3,19 @@
   "compilerOptions": {
     "composite": true,
     "rootDir": "src",
-    "outDir": "lib"
+    "outDir": "lib",
+    "lib": [
+      "es2017",
+      "dom",
+      "esnext"
+    ]
   },
   "include": ["src/**/*"],
   "references": [
     { "path": "../dc-messaging" },
     { "path": "../dc-ethereum-utils" },
+    { "path": "../dc-events" },
+    { "path": "../dc-blockchain-types" },
     { "path": "../dc-logging" },
     { "path": "../dc-configs" },
     { "path": "../dc-statistics-client" }

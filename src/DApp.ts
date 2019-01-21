@@ -133,7 +133,7 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
     // TODO: should be some more complicated alg
 
     if (theChosen) {
-      const userId = this._params.Eth.getAccount().address
+      const userId = this._params.userAddress
       const { roomAddress } = await this._gameInfoRoom.connect({
         userId
       })
@@ -147,6 +147,7 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
         gameLogicFunction: this._params.gameLogicFunction,
         roomProvider: this._params.roomProvider,
         roomAddress,
+        playerSign: this._params.playerSign,
         onFinish: this.onGameFinished,
         gameInfo: this._gameInfo,
         Eth: this._params.Eth
@@ -172,11 +173,13 @@ export class DApp extends EventEmitter implements IDApp, IGameInfoRoom {
       this,
       true
     )
-    await this._params.Eth.ERC20ApproveSafe(
-      this._gameContractAddress,
-      SERVER_APPROVE_AMOUNT,
-      SERVER_APPROVE_MINAMOUNT
-    )
+    await this._params.Eth.ERC20ApproveSafe({
+      spender: this._gameContractAddress,
+      amount: SERVER_APPROVE_AMOUNT,
+      minAmount: SERVER_APPROVE_MINAMOUNT,
+      addressFrom: this._params.userAddress
+    })
+    
     return this._startSendingBeacon(3000)
   }
 

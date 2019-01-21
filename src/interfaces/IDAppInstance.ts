@@ -1,7 +1,6 @@
 import { IMessagingProvider } from '@daocasino/dc-messaging'
-import { ETHInstance } from '@daocasino/dc-ethereum-utils'
+import { BlockchainUtilsInstance, SolidityTypeValue } from "@daocasino/dc-blockchain-types"
 import { GameInfo } from './GameInfo'
-
 import Contract from 'web3/eth/contract'
 import { IStatisticsServerConnectParams } from './IStatisticsServerConnectParams'
 
@@ -15,10 +14,11 @@ export interface DAppInstanceParams {
   gameLogicFunction: () => IGameLogic
   gameContractInstance: Contract
   gameContractAddress: string
+  playerSign?: (data: SolidityTypeValue[]) => Promise<string>
   roomProvider: IMessagingProvider
   onFinish: (userId: UserId) => void
   gameInfo: GameInfo
-  Eth: ETHInstance,
+  Eth: BlockchainUtilsInstance
   statistics?: IStatisticsServerConnectParams
 }
 
@@ -120,7 +120,10 @@ export interface ChannelStateData {
 
 export interface IDAppPlayerInstance extends IDAppInstance {
   getChannelStateData: () => ChannelStateData
-
+  getParamsForOpenChannel: (connectData: ConnectParams) => Promise<{
+    openChannelParams: OpenChannelParams,
+    signature: string
+  }>
   // find bankroller in p2p network and "connect"
   connect(connectData: ConnectParams): Promise<any>
 
@@ -130,14 +133,24 @@ export interface IDAppPlayerInstance extends IDAppInstance {
     signature: string
   ): Promise<any>
 
+  launchConnect: (connectData: ConnectParams) => AsyncIterator<any>
+  launchDisconnect: () => AsyncIterator<any>
   /*
     Call game logic function on dealer side and client side
     verify randoms and channelState
    */
   play(
     params: PlayParams
-  ): Promise<{ profit: number; randoms: number[]; data?: any }>
-
+  ): Promise<{
+    profit: number;
+    randoms: number[];
+    data?: any
+  }>
+  
+  getParamsForCloseChannel: () => Promise<{
+    lastState: CloseChannelParams,
+    consentSignature: string
+  }>
   // Send close channel TX on game contract (oneStepGame.sol)
   // ask dealer to sign data for close by consent and send TX
   closeChannel(
