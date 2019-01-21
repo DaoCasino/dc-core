@@ -14,7 +14,6 @@
   "references": [
     { "path": "../dc-messaging" },
     { "path": "../dc-ethereum-utils" },
-    { "path": "../dc-events" },
     { "path": "../dc-blockchain-types" },
     { "path": "../dc-logging" },
     { "path": "../dc-configs" },
