@@ -1,6 +1,6 @@
 {
   "name": "@daocasino/dc-core",
-  "version": "0.2.4",
+  "version": "0.2.8",
   "description": "DAO.Casino core library",
   "main": "./lib/index",
   "scripts": {
